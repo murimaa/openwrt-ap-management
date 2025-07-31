@@ -16,9 +16,17 @@ for FILE in "$CONFIG_DIR"/*.conf; do
   SSID_HIDDEN=${SSID_HIDDEN:-0}
   SSID_ENCRYPTION=${SSID_ENCRYPTION:-sae}
   SSID_FAST_ROAM=${SSID_FAST_ROAM:-0}
+  SSID_BANDS=${SSID_BANDS:-"2g 5g"}  # Default to both bands if not specified
 
   for RADIO in $RADIOS; do
     BAND=$(uci get wireless.$RADIO.band 2>/dev/null)
+    
+    # Skip this radio if it's not in the specified bands
+    if ! echo "$SSID_BANDS" | grep -q "$BAND"; then
+      echo "[-] Skipping SSID '$SSID_NAME' on $BAND ($RADIO) - not in specified bands: $SSID_BANDS"
+      continue
+    fi
+    
     IFNAME="${SSID_NETWORK}_${BAND:-$(echo $RADIO | tr -cd '0-9')}"
 
     echo "[+] Applying SSID '$SSID_NAME' to $BAND on $RADIO..."
@@ -52,7 +60,7 @@ for FILE in "$CONFIG_DIR"/*.conf; do
   done
 
   # Clean up vars for safety
-  unset SSID_NAME SSID_KEY SSID_NETWORK SSID_HIDDEN SSID_ENCRYPTION SSID_FAST_ROAM SSID_EXTRA
+  unset SSID_NAME SSID_KEY SSID_NETWORK SSID_HIDDEN SSID_ENCRYPTION SSID_FAST_ROAM SSID_EXTRA SSID_BANDS
 done
 
 echo "[*] Enabling radios..."
