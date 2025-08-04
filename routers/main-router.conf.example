@@ -1,0 +1,79 @@
+#!/bin/sh
+# Main Router Configuration
+# This file contains deployment info and router-specific wireless overrides
+# Hardware-specific settings are automatically applied from common-overrides.conf
+
+# ===========================================
+# DEPLOYMENT CONFIGURATION
+# ===========================================
+ROUTER_IP="192.168.1.1"
+ROUTER_NAME="main-router"
+ROUTER_LOCATION="living-room"
+SSH_USER="root"
+SSH_PORT="22"
+
+# Optional SSH key for passwordless deployment
+# SSH_KEY="/path/to/ssh/key"
+
+# ===========================================
+# RADIO-SPECIFIC OVERRIDES
+# ===========================================
+
+# Set optimal channels for main router (avoiding interference)
+RADIO_OVERRIDE_radio0_channel="6"        # 2.4GHz - Channel 6 for good coverage
+RADIO_OVERRIDE_radio1_channel="36"       # 5GHz - Channel 36 for best performance
+
+# Set higher transmit power for main router to ensure good coverage
+RADIO_OVERRIDE_radio0_txpower="20"       # 2.4GHz - Max power for coverage
+RADIO_OVERRIDE_radio1_txpower="23"       # 5GHz - Max power for performance
+
+# Use optimal HT modes for best performance
+RADIO_OVERRIDE_radio0_htmode="HT40"      # 2.4GHz - 40MHz for better throughput
+RADIO_OVERRIDE_radio1_htmode="VHT80"     # 5GHz - 80MHz for maximum performance
+
+# ===========================================
+# OPTIONAL SSID-SPECIFIC OVERRIDES FOR THIS AP ONLY
+# ===========================================
+
+# Main router hosts all networks with optimal settings
+# No SSIDs disabled - this is the primary access point
+
+# Optimize main network for best performance
+SSID_OVERRIDE_main_extra="isolate=0 max_inactivity=7200 disassoc_low_ack=0"
+
+# Guest network with reasonable restrictions
+SSID_OVERRIDE_guest_extra="isolate=1 max_inactivity=1800 max_num_sta=20"
+
+# IoT network optimized for many small devices
+SSID_OVERRIDE_iot_extra="isolate=1 max_inactivity=3600 max_num_sta=50"
+
+# Enable fast roaming on main network for seamless handoffs
+SSID_OVERRIDE_main_fast_roam="1"
+
+# ===========================================
+# GLOBAL ROUTER OVERRIDES
+# ===========================================
+
+# Set country code if needed (optional - no default is set)
+# COUNTRY_CODE="FI"
+
+# ===========================================
+# ROUTER-SPECIFIC RADIO OVERRIDES
+# ===========================================
+
+# Override hardware-specific settings from common-overrides.conf if needed
+# Example: Force different power levels for this specific router location
+# RADIO_OVERRIDE_radio0_txpower="18"  # Override common setting
+# RADIO_OVERRIDE_radio1_txpower="21"  # Override common setting
+
+# ===========================================
+# DEPLOYMENT NOTES
+# ===========================================
+# This is the main router serving as the primary access point
+# Features:
+# - All SSIDs enabled
+# - Maximum performance settings
+# - Optimal channel selection
+# - Fast roaming enabled for seamless transitions
+# - Hardware-specific optimizations applied from common-overrides.conf
+# - Router-specific overrides can override common settings

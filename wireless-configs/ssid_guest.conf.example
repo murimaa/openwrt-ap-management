@@ -1,0 +1,14 @@
+#!/bin/sh
+# Guest network SSID configuration
+# This is for temporary visitors and untrusted devices
+
+SSID_NAME="MyHome-Guest"
+SSID_KEY="guest-password-123"
+SSID_NETWORK="vlan20"
+SSID_ENCRYPTION="psk2"
+SSID_FAST_ROAM="0"
+SSID_BANDS="2g 5g"
+SSID_HIDDEN="0"
+
+# Extra UCI options for guest network - isolated and shorter timeout
+SSID_EXTRA="isolate=1 max_inactivity=300"

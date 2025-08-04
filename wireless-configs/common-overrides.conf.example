@@ -1,0 +1,27 @@
+#!/bin/sh
+# ===========================================
+# GLOBAL SETTINGS
+# ===========================================
+
+# Set country code if needed (optional - no default is set)
+# Uncomment and set to your country code if required
+# COUNTRY_CODE="FI"
+
+# ===========================================
+# HARDWARE-SPECIFIC ADJUSTMENTS
+# ===========================================
+
+HARDWARE_MODEL=$(cat /tmp/sysinfo/model 2>/dev/null || echo "unknown")
+
+case "$HARDWARE_MODEL" in
+    *"Archer"*)
+        # Archer routers - known to run warm, reduce power further
+        RADIO_OVERRIDE_radio0_txpower="13"
+        RADIO_OVERRIDE_radio1_txpower="16"
+        ;;
+    *"Netgear"*)
+        # Netgear routers - usually good thermal management
+        RADIO_OVERRIDE_radio0_txpower="15"
+        RADIO_OVERRIDE_radio1_txpower="18"
+        ;;
+esac

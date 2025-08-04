@@ -1,0 +1,14 @@
+#!/bin/sh
+# Main network SSID configuration
+# This is the primary network for trusted devices
+
+SSID_NAME="MyHome-WiFi"
+SSID_KEY="your-secure-password-here"
+SSID_NETWORK="vlan10"
+SSID_ENCRYPTION="sae"
+SSID_FAST_ROAM="1"
+SSID_BANDS="2g 5g"
+SSID_HIDDEN="0"
+
+# Extra UCI options for the main network
+SSID_EXTRA="isolate=0 max_inactivity=3600"

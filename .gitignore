@@ -1,2 +1,3 @@
 setup_networks.conf
-wireless-configs/ssid*.conf
+wireless-configs/*.conf
+routers/*.conf

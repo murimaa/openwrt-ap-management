@@ -1,0 +1,82 @@
+#!/bin/sh
+# Bedroom Router Configuration
+# This file contains deployment info and router-specific wireless overrides
+# Hardware-specific settings are automatically applied from common-overrides.conf
+
+# ===========================================
+# DEPLOYMENT CONFIGURATION
+# ===========================================
+ROUTER_IP="192.168.1.2"
+ROUTER_NAME="bedroom-router"
+ROUTER_LOCATION="bedroom"
+SSH_USER="root"
+SSH_PORT="22"
+
+# Optional SSH key for passwordless deployment
+# SSH_KEY="/path/to/ssh/key"
+
+# ===========================================
+# OPTIONAL RADIO-SPECIFIC OVERRIDES
+# ===========================================
+
+# Use different channels to avoid interference with main router
+RADIO_OVERRIDE_radio0_channel="11"       # 2.4GHz - Channel 11 (far from main router's ch 6)
+RADIO_OVERRIDE_radio1_channel="149"      # 5GHz - Channel 149 (DFS-free, different from main)
+
+# Lower transmit power for bedroom - less EMF exposure while sleeping
+RADIO_OVERRIDE_radio0_txpower="15"       # 2.4GHz - Reduced power for bedroom
+RADIO_OVERRIDE_radio1_txpower="18"       # 5GHz - Moderate power, still good coverage
+
+# Conservative HT modes for stability and lower power consumption
+RADIO_OVERRIDE_radio0_htmode="HT20"      # 2.4GHz - 20MHz for better compatibility
+RADIO_OVERRIDE_radio1_htmode="VHT40"     # 5GHz - 40MHz balances performance and power
+
+# ===========================================
+# OPTIONAL SSID-SPECIFIC OVERRIDES FOR THIS AP ONLY
+# ===========================================
+
+# Disable guest network in bedroom for privacy
+SSID_OVERRIDE_guest_disabled="1"
+
+# Keep main network but with bedroom-optimized settings
+SSID_OVERRIDE_main_extra="isolate=0 max_inactivity=3600 disassoc_low_ack=1"
+
+# IoT network for bedroom devices (smart lights, sensors, etc.)
+# Keep 2.4GHz only for better wall penetration
+SSID_OVERRIDE_iot_bands="2g"
+SSID_OVERRIDE_iot_extra="isolate=1 max_inactivity=7200 max_num_sta=25"
+
+# Disable fast roaming on bedroom router to avoid aggressive roaming
+SSID_OVERRIDE_main_fast_roam="0"
+
+# If there's an admin network, hide it in bedroom for security
+SSID_OVERRIDE_admin_hidden="1"
+
+# ===========================================
+# GLOBAL ROUTER OVERRIDES
+# ===========================================
+
+# Set country code if needed (optional - no default is set)
+# COUNTRY_CODE="FI"
+
+# ===========================================
+# ROUTER-SPECIFIC RADIO OVERRIDES
+# ===========================================
+
+# Override hardware-specific settings from common-overrides.conf if needed
+# Example: Even lower power for bedroom environment
+# RADIO_OVERRIDE_radio0_txpower="10"  # Override common setting for bedroom
+# RADIO_OVERRIDE_radio1_txpower="13"  # Override common setting for bedroom
+
+# ===========================================
+# DEPLOYMENT NOTES
+# ===========================================
+# This is the bedroom router optimized for sleeping environment
+# Features:
+# - Reduced transmit power for health/comfort
+# - Guest network disabled for privacy
+# - Different channels to avoid interference with main router
+# - IoT network on 2.4GHz only for better penetration
+# - Conservative HT modes for stability
+# - Hardware-specific optimizations applied from common-overrides.conf
+# - Router-specific overrides can override common settings

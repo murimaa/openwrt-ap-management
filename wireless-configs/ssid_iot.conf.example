@@ -1,0 +1,14 @@
+#!/bin/sh
+# IoT network SSID configuration
+# This is for Internet of Things devices like smart home devices
+
+SSID_NAME="MyHome-IoT"
+SSID_KEY="iot-secure-key-456"
+SSID_NETWORK="vlan30"
+SSID_ENCRYPTION="psk2"
+SSID_FAST_ROAM="0"
+SSID_BANDS="2g"
+SSID_HIDDEN="0"
+
+# Extra UCI options for IoT network - isolated and medium timeout
+SSID_EXTRA="isolate=1 max_inactivity=1800"
