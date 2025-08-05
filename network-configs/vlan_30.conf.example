@@ -1,0 +1,14 @@
+#!/bin/sh
+# VLAN 30 Configuration - IoT Network
+# This VLAN is typically used for IoT devices with controlled access
+
+VLAN_ID="30"
+VLAN_NAME="iot"
+VLAN_DESCRIPTION="IoT Network"
+
+# VLAN behavior
+VLAN_UNTAGGED="0"  # 0 = tagged, 1 = untagged on uplink port
+# VLAN_PROTO="none"  # dhcp, static, or none (default)
+
+# Additional UCI options (space-separated key=value pairs)
+# VLAN_EXTRA="mtu=1500 igmp_snooping=1"

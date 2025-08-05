@@ -1,79 +1,101 @@
 #!/bin/sh
-# Main Router Configuration
-# This file contains deployment info and router-specific wireless overrides
-# Hardware-specific settings are automatically applied from common-overrides.conf
+# Main Router Configuration Example
+# This is typically your primary router with full functionality
 
 # ===========================================
-# DEPLOYMENT CONFIGURATION
-# ===========================================
-ROUTER_IP="192.168.1.1"
-ROUTER_NAME="main-router"
-ROUTER_LOCATION="living-room"
-SSH_USER="root"
-SSH_PORT="22"
-
-# Optional SSH key for passwordless deployment
-# SSH_KEY="/path/to/ssh/key"
-
-# ===========================================
-# RADIO-SPECIFIC OVERRIDES
+# ROUTER CONNECTION DETAILS
 # ===========================================
 
-# Set optimal channels for main router (avoiding interference)
-RADIO_OVERRIDE_radio0_channel="6"        # 2.4GHz - Channel 6 for good coverage
-RADIO_OVERRIDE_radio1_channel="36"       # 5GHz - Channel 36 for best performance
-
-# Set higher transmit power for main router to ensure good coverage
-RADIO_OVERRIDE_radio0_txpower="20"       # 2.4GHz - Max power for coverage
-RADIO_OVERRIDE_radio1_txpower="23"       # 5GHz - Max power for performance
-
-# Use optimal HT modes for best performance
-RADIO_OVERRIDE_radio0_htmode="HT40"      # 2.4GHz - 40MHz for better throughput
-RADIO_OVERRIDE_radio1_htmode="VHT80"     # 5GHz - 80MHz for maximum performance
+ROUTER_IP="192.168.1.1"                     # Router IP address (REQUIRED)
+ROUTER_NAME="main-router"                    # Friendly name for logs
+SSH_USER="root"                              # SSH username (default: root)
+SSH_PORT="22"                                # SSH port (default: 22)
+# SSH_KEY="/home/user/.ssh/openwrt_key"     # Optional SSH key path
 
 # ===========================================
-# OPTIONAL SSID-SPECIFIC OVERRIDES FOR THIS AP ONLY
+# NETWORK-SPECIFIC OVERRIDES
 # ===========================================
 
-# Main router hosts all networks with optimal settings
-# No SSIDs disabled - this is the primary access point
+# Hardware interface overrides (if different from common-overrides.conf)
+# MAIN_IFACE="eth0"                          # Override main network interface
+# UPLINK_PORT="0"                            # Override switch uplink port
+# CPU_PORT="6"                               # Override switch CPU port
 
-# Optimize main network for best performance
-SSID_OVERRIDE_main_extra="isolate=0 max_inactivity=7200 disassoc_low_ack=0"
+# Management VLAN is untagged on this router (trunk port)
+VLAN_OVERRIDE_10_untagged="1"
 
-# Guest network with reasonable restrictions
-SSID_OVERRIDE_guest_extra="isolate=1 max_inactivity=1800 max_num_sta=20"
+# Management VLAN (VLAN 10) - Full configuration for main router
+VLAN_OVERRIDE_10_proto="static"              # Use static IP for management
+VLAN_OVERRIDE_10_ipaddr="192.168.10.1"      # Gateway IP for management network
+VLAN_OVERRIDE_10_netmask="255.255.255.0"    # Management network subnet
+VLAN_OVERRIDE_10_gateway="192.168.1.1"      # Upstream gateway
+VLAN_OVERRIDE_10_dns="8.8.8.8 8.8.4.4"     # DNS servers
+VLAN_OVERRIDE_10_extra="mtu=1500"           # Additional UCI options
 
-# IoT network optimized for many small devices
-SSID_OVERRIDE_iot_extra="isolate=1 max_inactivity=3600 max_num_sta=50"
+# Guest VLAN (VLAN 20) - Isolated guest network
+VLAN_OVERRIDE_20_extra="multicast_querier=1" # Enable multicast support
 
-# Enable fast roaming on main network for seamless handoffs
-SSID_OVERRIDE_main_fast_roam="1"
+# IoT VLAN (VLAN 30) - Smart home devices
+VLAN_OVERRIDE_30_extra="igmp_snooping=1 multicast_querier=1" # Multicast optimization
 
-# ===========================================
-# GLOBAL ROUTER OVERRIDES
-# ===========================================
-
-# Set country code if needed (optional - no default is set)
-# COUNTRY_CODE="FI"
-
-# ===========================================
-# ROUTER-SPECIFIC RADIO OVERRIDES
-# ===========================================
-
-# Override hardware-specific settings from common-overrides.conf if needed
-# Example: Force different power levels for this specific router location
-# RADIO_OVERRIDE_radio0_txpower="18"  # Override common setting
-# RADIO_OVERRIDE_radio1_txpower="21"  # Override common setting
+# Server VLAN (VLAN 40) - Internal servers (enable if you have servers)
+# VLAN_OVERRIDE_40_disabled="0"             # Enable server VLAN
 
 # ===========================================
-# DEPLOYMENT NOTES
+# WIRELESS-SPECIFIC OVERRIDES
 # ===========================================
-# This is the main router serving as the primary access point
-# Features:
-# - All SSIDs enabled
-# - Maximum performance settings
-# - Optimal channel selection
-# - Fast roaming enabled for seamless transitions
-# - Hardware-specific optimizations applied from common-overrides.conf
-# - Router-specific overrides can override common settings
+
+# Radio optimization for main router (high performance)
+RADIO_OVERRIDE_radio0_channel="36"           # 5GHz - Channel 36 (non-DFS)
+RADIO_OVERRIDE_radio1_channel="6"            # 2.4GHz - Channel 6 (common, good performance)
+RADIO_OVERRIDE_radio0_txpower="20"          # 5GHz - High power for coverage
+RADIO_OVERRIDE_radio1_txpower="20"          # 2.4GHz - High power for coverage
+RADIO_OVERRIDE_radio0_htmode="VHT80"        # 5GHz - 80MHz for maximum throughput
+RADIO_OVERRIDE_radio1_htmode="HT40"         # 2.4GHz - 40MHz for good performance
+
+# Main network SSID - Full band coverage
+SSID_OVERRIDE_main_bands="2g 5g"            # Enable on both bands
+SSID_OVERRIDE_main_fast_roam="1"            # Enable fast roaming (802.11r)
+
+# Guest network SSID - Limited to 5GHz for performance
+SSID_OVERRIDE_guest_bands="5g"              # 5GHz only to encourage usage
+SSID_OVERRIDE_guest_hidden="0"              # Visible guest network
+SSID_OVERRIDE_guest_extra="isolate=1"       # Isolate guest clients from each other
+
+# IoT network SSID - Optimize for 2.4GHz devices
+SSID_OVERRIDE_iot_bands="2g 5g"             # Both bands for compatibility
+SSID_OVERRIDE_iot_encryption="sae"          # WPA3 for security
+SSID_OVERRIDE_iot_extra="dtim_period=3"     # Power saving for battery devices
+
+# Work network SSID (if you have a work VLAN)
+# SSID_OVERRIDE_work_disabled="0"           # Enable work network
+# SSID_OVERRIDE_work_bands="5g"             # 5GHz only for performance
+# SSID_OVERRIDE_work_encryption="sae"       # WPA3 for security
+# SSID_OVERRIDE_work_hidden="1"             # Hidden for security
+
+# ===========================================
+# LOCATION-SPECIFIC SETTINGS
+# ===========================================
+
+# Main router typically has:
+# - Full power settings for maximum coverage
+# - All VLANs enabled
+# - Static IP configuration for management
+# - High-performance radio settings
+# - All SSIDs enabled on appropriate bands
+
+# Uncomment and modify based on your specific needs:
+
+# Advanced wireless settings
+# SSID_OVERRIDE_main_extra="ieee80211w=1 wpa_group_rekey=3600"  # PMF and group rekey
+# SSID_OVERRIDE_guest_extra="isolate=1 maxassoc=20"            # Limit guest connections
+
+# VLAN-specific overrides
+# VLAN_OVERRIDE_10_extra="mtu=1500 multicast_querier=1"        # Management optimizations
+# VLAN_OVERRIDE_30_extra="igmp_snooping=1 hash_max=512"        # IoT multicast optimization
+
+# Hardware-specific network optimizations
+# Based on your router model, you might need:
+# MAIN_IFACE="eth1"              # For TP-Link Archer C7
+# UPLINK_PORT="1"                # For TP-Link Archer C7
+# CPU_PORT="0"                   # For TP-Link Archer C7

@@ -1,82 +1,105 @@
 #!/bin/sh
-# Bedroom Router Configuration
-# This file contains deployment info and router-specific wireless overrides
-# Hardware-specific settings are automatically applied from common-overrides.conf
+# Bedroom Router Configuration Example
+# This is typically an access point in a bedroom with optimized settings for that environment
 
 # ===========================================
-# DEPLOYMENT CONFIGURATION
-# ===========================================
-ROUTER_IP="192.168.1.2"
-ROUTER_NAME="bedroom-router"
-ROUTER_LOCATION="bedroom"
-SSH_USER="root"
-SSH_PORT="22"
-
-# Optional SSH key for passwordless deployment
-# SSH_KEY="/path/to/ssh/key"
-
-# ===========================================
-# OPTIONAL RADIO-SPECIFIC OVERRIDES
+# ROUTER CONNECTION DETAILS
 # ===========================================
 
-# Use different channels to avoid interference with main router
-RADIO_OVERRIDE_radio0_channel="11"       # 2.4GHz - Channel 11 (far from main router's ch 6)
-RADIO_OVERRIDE_radio1_channel="149"      # 5GHz - Channel 149 (DFS-free, different from main)
-
-# Lower transmit power for bedroom - less EMF exposure while sleeping
-RADIO_OVERRIDE_radio0_txpower="15"       # 2.4GHz - Reduced power for bedroom
-RADIO_OVERRIDE_radio1_txpower="18"       # 5GHz - Moderate power, still good coverage
-
-# Conservative HT modes for stability and lower power consumption
-RADIO_OVERRIDE_radio0_htmode="HT20"      # 2.4GHz - 20MHz for better compatibility
-RADIO_OVERRIDE_radio1_htmode="VHT40"     # 5GHz - 40MHz balances performance and power
+ROUTER_IP="192.168.1.32"                    # Router IP address (REQUIRED)
+ROUTER_NAME="bedroom-router"                 # Friendly name for logs
+SSH_USER="root"                              # SSH username (default: root)
+SSH_PORT="22"                                # SSH port (default: 22)
+# SSH_KEY="/home/user/.ssh/openwrt_key"     # Optional SSH key path
 
 # ===========================================
-# OPTIONAL SSID-SPECIFIC OVERRIDES FOR THIS AP ONLY
+# NETWORK-SPECIFIC OVERRIDES
 # ===========================================
 
-# Disable guest network in bedroom for privacy
-SSID_OVERRIDE_guest_disabled="1"
+# Hardware interface overrides (if different from common-overrides.conf)
+# Reference /etc/board.json on the router
+# MAIN_IFACE="eth0"                          # Override main network interface
+# UPLINK_PORT="0"                            # Override switch uplink port
+# CPU_PORT="6"                               # Override switch CPU port
 
-# Keep main network but with bedroom-optimized settings
-SSID_OVERRIDE_main_extra="isolate=0 max_inactivity=3600 disassoc_low_ack=1"
+# Management VLAN (VLAN 10) - Simple DHCP configuration for bedroom AP
+VLAN_OVERRIDE_10_proto="dhcp"                # Use DHCP (simpler for AP)
+# VLAN_OVERRIDE_10_extra="mtu=1500"         # Additional UCI options if needed
 
-# IoT network for bedroom devices (smart lights, sensors, etc.)
-# Keep 2.4GHz only for better wall penetration
-SSID_OVERRIDE_iot_bands="2g"
-SSID_OVERRIDE_iot_extra="isolate=1 max_inactivity=7200 max_num_sta=25"
+# Guest VLAN (VLAN 20) - DISABLED in bedroom for privacy/security
+VLAN_OVERRIDE_20_disabled="1"                # No guest network in private bedroom
 
-# Disable fast roaming on bedroom router to avoid aggressive roaming
-SSID_OVERRIDE_main_fast_roam="0"
+# IoT VLAN (VLAN 30) - Enabled
+VLAN_OVERRIDE_30_extra="igmp_snooping=1"     # Enable multicast for smart home devices
 
-# If there's an admin network, hide it in bedroom for security
-SSID_OVERRIDE_admin_hidden="1"
-
-# ===========================================
-# GLOBAL ROUTER OVERRIDES
-# ===========================================
-
-# Set country code if needed (optional - no default is set)
-# COUNTRY_CODE="FI"
+# Server VLAN (VLAN 40) - DISABLED in bedroom (not needed)
+VLAN_OVERRIDE_40_disabled="1"                # No server network needed in bedroom
 
 # ===========================================
-# ROUTER-SPECIFIC RADIO OVERRIDES
+# WIRELESS-SPECIFIC OVERRIDES
 # ===========================================
 
-# Override hardware-specific settings from common-overrides.conf if needed
-# Example: Even lower power for bedroom environment
-# RADIO_OVERRIDE_radio0_txpower="10"  # Override common setting for bedroom
-# RADIO_OVERRIDE_radio1_txpower="13"  # Override common setting for bedroom
+# Radio optimization for bedroom (lower power, different channels)
+RADIO_OVERRIDE_radio0_channel="149"          # 5GHz - Channel 149 (DFS-free, different from main)
+RADIO_OVERRIDE_radio1_channel="1"            # 2.4GHz - Channel 1 (avoid interference)
+RADIO_OVERRIDE_radio0_txpower="15"           # 5GHz - Reduced power for bedroom
+RADIO_OVERRIDE_radio1_txpower="15"           # 2.4GHz - Reduced power for bedroom
+RADIO_OVERRIDE_radio0_htmode="VHT40"         # 5GHz - 40MHz (conservative for stability)
+RADIO_OVERRIDE_radio1_htmode="HT20"          # 2.4GHz - 20MHz (better compatibility, less power)
+
+# Main network SSID - Prefer 5GHz in bedroom for less congestion
+SSID_OVERRIDE_main_bands="5g"                # 5GHz only (less congested, better performance)
+SSID_OVERRIDE_main_fast_roam="1"             # Enable fast roaming for seamless handoffs
+
+# Guest network SSID - DISABLED in bedroom
+SSID_OVERRIDE_guest_disabled="1"             # No guest WiFi in private bedroom
+
+# IoT network SSID - 2.4GHz only for better penetration to sensors
+SSID_OVERRIDE_iot_bands="2g"                 # 2.4GHz only (better range for sensors)
+SSID_OVERRIDE_iot_encryption="sae"           # WPA3 for security
+SSID_OVERRIDE_iot_extra="dtim_period=5"      # Extended DTIM for battery-powered sensors
+
+# Work network SSID - Enable if bedroom is used as home office
+# SSID_OVERRIDE_work_disabled="0"           # Enable work network
+# SSID_OVERRIDE_work_bands="5g"             # 5GHz only for work performance
+# SSID_OVERRIDE_work_hidden="1"             # Hidden work network for security
 
 # ===========================================
-# DEPLOYMENT NOTES
+# LOCATION-SPECIFIC SETTINGS
 # ===========================================
-# This is the bedroom router optimized for sleeping environment
-# Features:
-# - Reduced transmit power for health/comfort
+
+# Bedroom router characteristics:
+# - Reduced power settings (health, interference, battery life)
+# - Different channels from main router to avoid interference
 # - Guest network disabled for privacy
-# - Different channels to avoid interference with main router
-# - IoT network on 2.4GHz only for better penetration
 # - Conservative HT modes for stability
-# - Hardware-specific optimizations applied from common-overrides.conf
-# - Router-specific overrides can override common settings
+# - IoT network optimized for bedroom sensors (thermostats, etc.)
+# - Main network focused on 5GHz for better performance
+
+# Uncomment and modify based on your specific bedroom setup:
+
+# Enhanced privacy settings
+# SSID_OVERRIDE_main_extra="ieee80211w=2"               # Require PMF for security
+# SSID_OVERRIDE_iot_extra="wpa_group_rekey=7200"        # Extended group rekey for stability
+
+# Power saving optimizations for battery devices
+# SSID_OVERRIDE_iot_extra="dtim_period=5 beacon_int=300" # Extended beacon interval
+
+# Bedroom-specific IoT settings (if you have smart bedroom devices)
+# VLAN_OVERRIDE_30_extra="igmp_snooping=1 multicast_querier=0" # IoT multicast without querier
+
+# Night mode settings (if supported by hardware)
+# RADIO_OVERRIDE_radio0_txpower="10"        # Even lower power for night time
+# RADIO_OVERRIDE_radio1_txpower="10"        # Even lower power for night time
+
+# Bandwidth limitations for bedroom (if on slower uplink)
+# SSID_OVERRIDE_main_extra="maxassoc=10"    # Limit concurrent connections
+# SSID_OVERRIDE_iot_extra="maxassoc=15"     # Allow more IoT devices
+
+# Advanced bedroom optimizations:
+# - Use DFS-free channels to avoid radar interference
+# - Prefer 5GHz for main devices (phones, laptops)
+# - Use 2.4GHz for IoT devices (better penetration)
+# - Disable guest network for privacy in private spaces
+# - Use conservative power levels to avoid interference
+# - Enable fast roaming for seamless connectivity when moving between rooms

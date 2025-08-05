@@ -1,0 +1,14 @@
+#!/bin/sh
+# VLAN 20 Configuration - Guest Network
+# This VLAN is typically used for guest access with restricted access
+
+VLAN_ID="20"
+VLAN_NAME="guest"
+VLAN_DESCRIPTION="Guest Network"
+
+# VLAN behavior
+VLAN_UNTAGGED="0"  # 0 = tagged, 1 = untagged on uplink port
+# VLAN_PROTO="none"  # dhcp, static, or none (default)
+
+# Additional UCI options (space-separated key=value pairs)
+# VLAN_EXTRA="mtu=1500"

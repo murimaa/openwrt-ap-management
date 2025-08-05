@@ -1,14 +1,45 @@
 #!/bin/sh
 
-CONFIG_FILE="./setup_networks.conf"
+CONFIG_DIR="./network-configs"
+ROUTER_OVERRIDES_FILE="$CONFIG_DIR/router-overrides.conf"
 
-if [ -f "$CONFIG_FILE" ]; then
-  echo "[*] Loading configuration from $CONFIG_FILE"
-  . "$CONFIG_FILE"
-else
-  echo "[!] Config file $CONFIG_FILE not found ... aborting"
-  exit 1
+# Load router-specific overrides if they exist
+if [ -f "$ROUTER_OVERRIDES_FILE" ]; then
+  echo "[*] Loading router-specific overrides: $ROUTER_OVERRIDES_FILE"
+  . "$ROUTER_OVERRIDES_FILE"
 fi
+
+# Function to apply VLAN overrides
+apply_vlan_overrides() {
+  local vlan_id="$1"
+
+  # Apply VLAN-specific overrides using variable indirection
+  eval "override_disabled=\$VLAN_OVERRIDE_${vlan_id}_disabled"
+  eval "override_untagged=\$VLAN_OVERRIDE_${vlan_id}_untagged"
+  eval "override_proto=\$VLAN_OVERRIDE_${vlan_id}_proto"
+  eval "override_ipaddr=\$VLAN_OVERRIDE_${vlan_id}_ipaddr"
+  eval "override_netmask=\$VLAN_OVERRIDE_${vlan_id}_netmask"
+  eval "override_gateway=\$VLAN_OVERRIDE_${vlan_id}_gateway"
+  eval "override_dns=\$VLAN_OVERRIDE_${vlan_id}_dns"
+  eval "override_extra=\$VLAN_OVERRIDE_${vlan_id}_extra"
+
+  # Apply overrides if they exist
+  [ -n "$override_untagged" ] && VLAN_UNTAGGED="$override_untagged"
+  [ -n "$override_proto" ] && VLAN_PROTO="$override_proto"
+  [ -n "$override_ipaddr" ] && VLAN_IPADDR="$override_ipaddr"
+  [ -n "$override_netmask" ] && VLAN_NETMASK="$override_netmask"
+  [ -n "$override_gateway" ] && VLAN_GATEWAY="$override_gateway"
+  [ -n "$override_dns" ] && VLAN_DNS="$override_dns"
+  [ -n "$override_extra" ] && VLAN_EXTRA="$override_extra"
+
+  # Check if this VLAN should be disabled on this router
+  if [ "$override_disabled" = "1" ]; then
+    echo "    [-] VLAN $vlan_id disabled by router override"
+    return 1
+  fi
+
+  return 0
+}
 
 # === BACKUP ===
 echo "[*] Backing up current config..."
@@ -31,89 +62,123 @@ for cfg in $(uci show network | grep -E '=(interface|device)' | cut -d. -f2 | cu
   fi
 done
 
-# === CLEANUP ALL MGMT FIREWALL ZONES ===
-echo "[*] Removing all 'mgmt' firewall zones..."
-for rid in $(uci show firewall | grep "mgmt" | cut -d= -f1 | grep -E '^[^.]+\.[^.]+\.name' | cut -d. -f1-2); do
-  echo "[-] Deleting firewall section $rid"
-  uci -q delete "$rid"
-done
-
-# === DETECT SWITCH AND ADD VLAN TAGGING IF NEEDED ===
-# === MGMT VLAN ===
+# === DETECT SWITCH ===
+HAS_SWITCH=0
 if uci show network | grep -q '=switch'; then
+  HAS_SWITCH=1
   echo "[*] Switch detected — configuring VLAN on switch0..."
-
-  VLAN_SECTION=$(uci add network switch_vlan)
-  uci set network."$VLAN_SECTION".device='switch0'
-  uci set network."$VLAN_SECTION".vlan="$MGMT_VLAN"
-  if [ "$MGMT_UNTAGGED" = "1" ]; then
-    echo "[+] Adding mgmt VLAN $MGMT_VLAN untagged to port $UPLINK_PORT"
-    uci set network."$VLAN_SECTION".ports="${UPLINK_PORT} ${CPU_PORT}t"
-  else
-    echo "[+] Adding mgmt VLAN $MGMT_VLAN tagged to port $UPLINK_PORT"
-    uci set network."$VLAN_SECTION".ports="${UPLINK_PORT}t ${CPU_PORT}t"
-  fi
-  MGMT_IFACE="br-mgmt"
-  # === CREATE MGMT BRIDGE DEVICE (devmgmt) ===
-  echo "[*] Creating bridge br-mgmt with $MAIN_IFACE and $MAIN_IFACE.$MGMT_VLAN"
-  uci set network.devmgmt=device
-  uci set network.devmgmt.name="$MGMT_IFACE"
-  uci set network.devmgmt.type='bridge'
-  uci set network.devmgmt.ports="$MAIN_IFACE ${MAIN_IFACE}.${MGMT_VLAN}"
 else
-  echo "[*] No switch detected — using $MAIN_IFACE directly"
-  MGMT_IFACE=$([ "$MGMT_UNTAGGED" = "1" ] && echo "$MAIN_IFACE" || echo "${MAIN_IFACE}.${MGMT_VLAN}")
+  echo "[*] No switch detected — using ${MAIN_IFACE} directly"
 fi
 
-# === CONFIGURE MGMT INTERFACE ===
-echo "[*] Setting up management interface on br-mgmt..."
-uci set network.mgmt=interface
-uci set network.mgmt.device="$MGMT_IFACE"
-uci set network.mgmt.proto='dhcp'
+# === PROCESS EACH VLAN CONFIGURATION ===
+echo "[*] Processing VLAN configurations..."
+for FILE in "$CONFIG_DIR"/vlan_*.conf; do
+  [ ! -f "$FILE" ] && continue
 
-# === CONFIGURE FIREWALL FOR MGMT ===
-uci add firewall zone
-uci set firewall.@zone[-1].name='mgmt'
-uci set firewall.@zone[-1].input='ACCEPT'
-uci set firewall.@zone[-1].output='ACCEPT'
-uci set firewall.@zone[-1].forward='REJECT'
-uci add_list firewall.@zone[-1].network='mgmt'
+  echo "[*] Loading config: $FILE"
 
-# === CONFIGURE OTHER VLANs ===
-echo "[*] Configuring VLANs: $VLAN_LIST"
-for VLAN in $VLAN_LIST; do
-  BRIDGE_NAME="br-vlan$VLAN"
-  DEVICE_NAME="dev$VLAN"
-  INTERFACE_NAME="vlan$VLAN"
-  TAGGED_IFACE="${MAIN_IFACE}.${VLAN}"
+  # Load VLAN configuration
+  . "$FILE"
 
-  # Add switch VLAN tagging (CPU only, you can extend this)
-  if uci show network | grep -q '=switch'; then
-    VLAN_SECTION=$(uci add network switch_vlan)
-    uci set network."$VLAN_SECTION".device='switch0'
-    uci set network."$VLAN_SECTION".vlan="$VLAN"
-    uci set network."$VLAN_SECTION".ports="${UPLINK_PORT}t ${CPU_PORT}t"
+  # Set defaults
+  VLAN_UNTAGGED=${VLAN_UNTAGGED:-0}
+  VLAN_PROTO=${VLAN_PROTO:-none}
+
+  # Apply router-specific overrides for this VLAN
+  if ! apply_vlan_overrides "$VLAN_ID"; then
+    # VLAN is disabled, skip it
+    unset VLAN_ID VLAN_NAME VLAN_DESCRIPTION VLAN_UNTAGGED VLAN_PROTO VLAN_IPADDR VLAN_NETMASK VLAN_GATEWAY VLAN_DNS VLAN_EXTRA
+    continue
   fi
 
-  uci set network.$DEVICE_NAME=device
-  uci set network.$DEVICE_NAME.name="$BRIDGE_NAME"
-  uci set network.$DEVICE_NAME.type='bridge'
-  uci add_list network.$DEVICE_NAME.ports="$TAGGED_IFACE"
+  echo "    [+] Configuring VLAN $VLAN_ID ($VLAN_NAME)..."
+
+  # === SWITCH VLAN CONFIGURATION ===
+  if [ "$HAS_SWITCH" = "1" ]; then
+    VLAN_SECTION=$(uci add network switch_vlan)
+    uci set network."$VLAN_SECTION".device='switch0'
+    uci set network."$VLAN_SECTION".vlan="$VLAN_ID"
+
+    if [ "$VLAN_UNTAGGED" = "1" ]; then
+      echo "        [+] Adding VLAN $VLAN_ID untagged to port $UPLINK_PORT"
+      uci set network."$VLAN_SECTION".ports="${UPLINK_PORT} ${CPU_PORT}t"
+      VLAN_IFACE="$MAIN_IFACE ${MAIN_IFACE}.${VLAN_ID}"
+    else
+      echo "        [+] Adding VLAN $VLAN_ID tagged to port $UPLINK_PORT"
+      uci set network."$VLAN_SECTION".ports="${UPLINK_PORT}t ${CPU_PORT}t"
+      VLAN_IFACE="${MAIN_IFACE}.${VLAN_ID}"
+    fi
+
+    # Create bridge device for VLAN
+    BRIDGE_NAME="br-vlan${VLAN_ID}"
+    DEVICE_NAME="dev${VLAN_ID}"
+
+    uci set network.$DEVICE_NAME=device
+    uci set network.$DEVICE_NAME.name="$BRIDGE_NAME"
+    uci set network.$DEVICE_NAME.type='bridge'
+    uci set network.$DEVICE_NAME.ports="$VLAN_IFACE"
+
+    INTERFACE_DEVICE="$BRIDGE_NAME"
+  else
+    # No switch - use VLAN interface directly
+    if [ "$VLAN_UNTAGGED" = "1" ]; then
+      INTERFACE_DEVICE="$MAIN_IFACE"
+    else
+      # Create bridge device for VLAN
+      BRIDGE_NAME="br-vlan${VLAN_ID}"
+      DEVICE_NAME="dev${VLAN_ID}"
+
+      uci set network.$DEVICE_NAME=device
+      uci set network.$DEVICE_NAME.name="$BRIDGE_NAME"
+      uci set network.$DEVICE_NAME.type='bridge'
+
+      INTERFACE_DEVICE="$BRIDGE_NAME"
+    fi
+  fi
+
+  # === CREATE NETWORK INTERFACE ===
+  INTERFACE_NAME="vlan$VLAN_ID"
 
   uci set network.$INTERFACE_NAME=interface
-  uci set network.$INTERFACE_NAME.device="$BRIDGE_NAME"
-  uci set network.$INTERFACE_NAME.proto='none'
+  uci set network.$INTERFACE_NAME.device="$INTERFACE_DEVICE"
+  uci set network.$INTERFACE_NAME.proto="$VLAN_PROTO"
+
+  # Configure static IP if specified
+  if [ "$VLAN_PROTO" = "static" ]; then
+    [ -n "$VLAN_IPADDR" ] && uci set network.$INTERFACE_NAME.ipaddr="$VLAN_IPADDR"
+    [ -n "$VLAN_NETMASK" ] && uci set network.$INTERFACE_NAME.netmask="$VLAN_NETMASK"
+    [ -n "$VLAN_GATEWAY" ] && uci set network.$INTERFACE_NAME.gateway="$VLAN_GATEWAY"
+    [ -n "$VLAN_DNS" ] && uci set network.$INTERFACE_NAME.dns="$VLAN_DNS"
+  fi
+
+  # Apply extra UCI options if any
+  if [ -n "$VLAN_EXTRA" ]; then
+    for ENTRY in $VLAN_EXTRA; do
+      KEY=$(echo "$ENTRY" | cut -d= -f1)
+      VALUE=$(echo "$ENTRY" | cut -d= -f2-)
+      uci set network.$INTERFACE_NAME.$KEY="$VALUE"
+    done
+  fi
+
+  # Clean up variables for next iteration
+  unset VLAN_ID VLAN_NAME VLAN_DESCRIPTION VLAN_UNTAGGED VLAN_PROTO VLAN_IPADDR VLAN_NETMASK VLAN_GATEWAY VLAN_DNS VLAN_EXTRA
 done
 
-# === Disable dnsmasq ===
-/etc/init.d/dnsmasq stop
-/etc/init.d/dnsmasq disable
+# === Disable services that are not used in dumb AP's ===
+for i in firewall dnsmasq odhcpd; do
+    echo "[*] Disabling $i..."
+    if /etc/init.d/"$i" enabled; then
+        /etc/init.d/"$i" disable
+    fi
+    if /etc/init.d/"$i" running; then
+        /etc/init.d/"$i" stop
+    fi
+done
 
 # === APPLY CONFIG ===
 echo "[*] Applying configuration..."
 uci commit
-# /etc/init.d/network reload
-# /etc/init.d/firewall restart
+/etc/init.d/network reload
 
-echo "[+] Done. Please reboot to apply cleanly."
-echo "    Or run: /etc/init.d/network reload && /etc/init.d/firewall restart"
+echo "[+] Done."

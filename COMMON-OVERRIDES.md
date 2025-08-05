@@ -334,7 +334,7 @@ case "$HARDWARE_MODEL" in
     *"Archer"*) RADIO_OVERRIDE_radio0_txpower="17" ;;
 esac
 
-# routers/router2.conf  
+# routers/router2.conf
 case "$HARDWARE_MODEL" in
     *"Archer"*) RADIO_OVERRIDE_radio0_txpower="17" ;;
 esac
@@ -350,7 +350,7 @@ esac
 # routers/router1.conf - hardware settings removed, only location-specific
 RADIO_OVERRIDE_radio0_channel="6"
 
-# routers/router2.conf - hardware settings removed, only location-specific  
+# routers/router2.conf - hardware settings removed, only location-specific
 RADIO_OVERRIDE_radio0_channel="11"
 ```
 

@@ -1,0 +1,20 @@
+#!/bin/sh
+# VLAN 10 Configuration - Management/Admin Network
+# This VLAN is typically used for device management and admin access
+
+VLAN_ID="10"
+VLAN_NAME="mgmt"
+VLAN_DESCRIPTION="Management Network"
+
+# VLAN behavior
+VLAN_UNTAGGED="1"  # 0 = tagged, 1 = untagged on uplink port
+VLAN_PROTO="dhcp"  # dhcp, static, or none
+
+# If using static IP configuration (when VLAN_PROTO="static")
+# VLAN_IPADDR="192.168.10.1"
+# VLAN_NETMASK="255.255.255.0"
+# VLAN_GATEWAY="192.168.10.1"
+# VLAN_DNS="8.8.8.8 8.8.4.4"
+
+# Additional UCI options (space-separated key=value pairs)
+# VLAN_EXTRA="mtu=1500 multicast_querier=1"
