@@ -1,10 +1,10 @@
 # OpenWRT Unified Network & Wireless Management
 
-Deploy and maintain both VLAN network configurations and wireless configurations across multiple routers with a unified approach.
+Deploy and maintain both VLAN network configurations and wireless configurations across multiple wifi routers with a unified approach.
 
 Use case: Setup OpenWRT devices as managed access points with VLAN segmentation and corresponding wireless networks, perfect for creating segmented networks (main, guest, IoT, etc.). OpenWRT devices are used as "dumb" Wifi APs, with an IP address on management VLAN only.
 
-Designed to be used on fresh OpenWRT installations - **IF YOU HAVE EXISTING CONFIGURATIONS, PROCEED WITH CAUTION!** Please backup your current configuration. Devices can be maintained using the same deployment scripts, ie. change your VLAN/Wifi setup and rerun the script.
+Designed to be used on fresh OpenWRT installations - **IF YOU HAVE EXISTING CONFIGURATIONS, PROCEED WITH CAUTION!** Please backup your current configuration.
 
 Both systems are designed to be **idempotent** - you can run them multiple times to update configurations.
 
@@ -23,7 +23,7 @@ This system provides two complementary deployment tools:
 - 📡 **WiFi Networks** - Configure SSIDs mapped to VLANs
 - 🎛️ **Radio Optimization** - Hardware-specific radio settings
 - 🔐 **Security Settings** - WPA3/SAE, fast roaming, hidden networks
-- 📍 **Location-Specific** - Different SSIDs per router location
+- 📍 **Location-Specific** - Different SSIDs per AP location
 
 ## ✨ Key Features
 

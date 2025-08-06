@@ -143,7 +143,9 @@ VLAN_NAME="servers"
 VLAN_DESCRIPTION="Server Network"
 VLAN_UNTAGGED="0"
 VLAN_PROTO="static"             # Static configuration
-VLAN_IPADDR="192.168.40.10"
+# -> Don't do this: VLAN_IPADDR="192.168.40.10"
+#    It would define the same IP address for all routers
+# -> Instead, in routers/router.conf file: VLAN_OVERRIDE_40_ipaddr="192.168.40.1"
 VLAN_NETMASK="255.255.255.0"
 VLAN_GATEWAY="192.168.40.1"
 VLAN_DNS="8.8.8.8 8.8.4.4"
@@ -161,45 +163,37 @@ VLAN_PROTO="dhcp"
 
 ## 🔧 Hardware-Specific Examples
 
-### TP-Link Archer C7
+### Ubiquiti UniFi AC Pro
 ```bash
-# common-overrides.conf
+# network-configs/common-overrides.conf
 case "$HARDWARE_MODEL" in
-    *"Archer C7"*)
-        echo "[*] Applying TP-Link Archer C7 network optimizations"
-        MAIN_IFACE="eth1"           # C7 uses eth1 as main interface
-        UPLINK_PORT="1"             # Port 1 is uplink
-        CPU_PORT="0"                # CPU port is 0
-
-        # C7-specific optimizations
-        DEFAULT_MGMT_VLAN="10"      # Standard management VLAN
-        ;;
+    *"Ubiquiti UniFi AC Pro"*)
+        MAIN_IFACE="eth0"          # AC Pro uses eth0 as main interface
+        UPLINK_PORT="2"            # Port 2 is uplink (POE port)
+        CPU_PORT="0"               # CPU port is 0
+    ;;
 esac
 ```
 
-### TP-Link Archer A7
+### Ubiquiti UniFi AC Lite
 ```bash
+# network-configs/common-overrides.conf
 case "$HARDWARE_MODEL" in
-    *"Archer A7"*)
-        echo "[*] Applying TP-Link Archer A7 network optimizations"
-        MAIN_IFACE="eth0"           # A7 uses eth0
-        UPLINK_PORT="0"             # Port 0 is uplink
-        CPU_PORT="6"                # CPU port is 6
-        ;;
-esac
-```
-
-### Netgear R7800
-```bash
-case "$HARDWARE_MODEL" in
-    *"R7800"*)
-        echo "[*] Applying Netgear R7800 network optimizations"
+    *"Ubiquiti UniFi AC Lite"*)
+        # No switch on this device, no ports to configure
         MAIN_IFACE="eth0"
-        UPLINK_PORT="0"
-        CPU_PORT="0"
+    ;;
+esac
+```
 
-        # R7800 has good switching performance
-        DEFAULT_MGMT_VLAN="1"       # Use VLAN 1 as management
+### ASUS RT-AC1200 V2
+```bash
+# network-configs/common-overrides.conf
+case "$HARDWARE_MODEL" in
+    *"ASUS RT-AC1200 V2"*)
+        MAIN_IFACE="eth0"
+        UPLINK_PORT="1"     # LAN 1 port (NOT WAN)
+        CPU_PORT="6"        # CPU port is 6 on ASUS RT-AC1200 V2
         ;;
 esac
 ```
@@ -212,12 +206,10 @@ esac
 ROUTER_IP="192.168.1.1"
 ROUTER_NAME="main-router"
 
-# Enable all VLANs with optimized settings
 VLAN_OVERRIDE_10_proto="static"
 VLAN_OVERRIDE_10_ipaddr="192.168.10.1"
 VLAN_OVERRIDE_10_netmask="255.255.255.0"
 
-# Guest network with time restrictions
 VLAN_OVERRIDE_20_extra="multicast_querier=1"
 ```
 
@@ -333,7 +325,7 @@ ip link show | grep br-
 ## 🚀 Best Practices
 
 ### 1. VLAN Planning
-- **Use standard VLAN ranges**: 10-19 (management), 20-29 (guest), 30-39 (IoT), 40-49 (servers)
+- **Use clear VLAN ranges**: For example 10-19 (management), 20-29 (guest), 30-39 (IoT), 40-49 (servers)
 - **Document your VLANs**: Use descriptive names and comments
 
 ### 2. Configuration Management
@@ -342,7 +334,7 @@ ip link show | grep br-
 - **Consistent naming**: Use lowercase, descriptive VLAN names
 
 ### 3. Hardware Optimization
-- **Know your hardware**: Check port mapping and CPU port assignment
+- **Know your hardware**: Check port mapping and CPU port assignment. Refer to `/etc/board.json` on the target device
 - **Use common overrides**: Centralize hardware-specific settings
 - **Test on target hardware**: Verify switch configuration works correctly
 
@@ -354,9 +346,8 @@ ip link show | grep br-
 ## 📚 Related Documentation
 
 - **[../README.md](../README.md)** - Complete system overview
-- **[../wireless-configs/README.md](../wireless-configs/README.md)** - Wireless configuration system
 - **[../EXAMPLE-USAGE.md](../EXAMPLE-USAGE.md)** - Real-world usage examples
-- **[../TROUBLESHOOTING.md](../TROUBLESHOOTING.md)** - Common issues and solutions
+
 
 ## 🔗 External References
 

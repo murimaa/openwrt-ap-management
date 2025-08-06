@@ -1,0 +1,47 @@
+#!/bin/sh
+
+# Common network overrides applied to ALL routers
+# Hardware-specific optimizations and defaults
+
+# Get hardware model for hardware-specific settings
+HARDWARE_MODEL=$(cat /tmp/sysinfo/model 2>/dev/null || echo "unknown")
+
+# Default network interface (most common)
+MAIN_IFACE="${MAIN_IFACE:-eth0}"
+
+# Default switch ports (can be overridden per router)
+UPLINK_PORT="${UPLINK_PORT:-1}"
+CPU_PORT="${CPU_PORT:-0}"
+
+echo "[*] Hardware detected: $HARDWARE_MODEL"
+
+# Hardware-specific network optimizations
+case "$HARDWARE_MODEL" in
+    *"Ubiquiti UniFi AC Pro"*)
+        echo "[*] Applying Ubiquiti UniFi AC Pro port settings"
+        MAIN_IFACE="eth0"
+        UPLINK_PORT="2"
+        CPU_PORT="0"
+        ;;
+    *"Ubiquiti UniFi AC Lite"*)
+        echo "[*] Applying Ubiquiti UniFi AC Lite port settings"
+        # No switch on this device, no ports to configure
+        MAIN_IFACE="eth0"
+        ;;
+
+    *"ASUS RT-AC1200 V2"*)
+        echo "[*] Applying ASUS RT-AC1200 V2 port settings"
+        MAIN_IFACE="eth0"
+        UPLINK_PORT="1"
+        CPU_PORT="6"
+        ;;
+    *)
+        echo "[*] Using default network configuration for unknown hardware"
+        ;;
+esac
+
+# Export hardware detection for use in setup script
+export HARDWARE_MODEL
+export MAIN_IFACE
+export UPLINK_PORT
+export CPU_PORT
