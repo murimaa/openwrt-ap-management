@@ -3,9 +3,122 @@
 CONFIG_DIR="./network-configs"
 ROUTER_OVERRIDES_FILE="$CONFIG_DIR/router-overrides.conf"
 
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Default options
+DRY_RUN=false
+VERBOSE=false
+
+# Get router identification for logging
+ROUTER_PREFIX=""
+if [ -n "$ROUTER_NAME" ]; then
+    ROUTER_PREFIX="[$ROUTER_NAME] "
+elif [ -n "$ROUTER_IP" ]; then
+    ROUTER_PREFIX="[$ROUTER_IP] "
+fi
+
+# Parse command line arguments
+while [ $# -gt 0 ]; do
+  case $1 in
+    -d|--dry-run)
+      DRY_RUN=true
+      shift
+      ;;
+    -v|--verbose)
+      VERBOSE=true
+      shift
+      ;;
+    -h|--help)
+      echo "Usage: $0 [OPTIONS]"
+      echo ""
+      echo "Options:"
+      echo "  -d, --dry-run     Show commands without executing them"
+      echo "  -v, --verbose     Show commands being executed"
+      echo "  -h, --help        Show this help message"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1"
+      exit 1
+      ;;
+  esac
+done
+
+# Logging functions
+log_verbose() {
+    if [ "$VERBOSE" = "true" ]; then
+        echo -e "${ROUTER_PREFIX}${CYAN}[VERBOSE]${NC} $1"
+    fi
+}
+
+log_info() {
+    echo -e "${ROUTER_PREFIX}${BLUE}[INFO]${NC} $1"
+}
+
+log_success() {
+    echo -e "${ROUTER_PREFIX}${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${ROUTER_PREFIX}${YELLOW}[WARNING]${NC} $1"
+}
+
+log_error() {
+    echo -e "${ROUTER_PREFIX}${RED}[ERROR]${NC} $1"
+}
+
+# UCI wrapper function
+run_uci() {
+  if [ "$DRY_RUN" = "true" ]; then
+    echo -e "${ROUTER_PREFIX}${YELLOW}[DRY-RUN]${NC} uci $*"
+  elif [ "$VERBOSE" = "true" ]; then
+    echo -e "${ROUTER_PREFIX}${CYAN}[VERBOSE]${NC} uci $*"
+  fi
+
+  if [ "$DRY_RUN" = "false" ]; then
+    uci "$@"
+  fi
+}
+
+# UCI wrapper function for commands that return output
+run_uci_capture() {
+  if [ "$DRY_RUN" = "true" ]; then
+    echo -e "${ROUTER_PREFIX}${YELLOW}[DRY-RUN]${NC} uci $*" >&2
+  elif [ "$VERBOSE" = "true" ]; then
+    echo -e "${ROUTER_PREFIX}${CYAN}[VERBOSE]${NC} uci $*" >&2
+  fi
+
+  if [ "$DRY_RUN" = "false" ]; then
+    uci "$@"
+  else
+    # Return a dummy value in dry-run mode
+    echo "cfg_dummy_$$"
+  fi
+}
+
+# Other command wrapper function
+run_cmd() {
+  if [ "$DRY_RUN" = "true" ]; then
+    echo -e "${ROUTER_PREFIX}${YELLOW}[DRY-RUN]${NC} $*"
+  elif [ "$VERBOSE" = "true" ]; then
+    echo -e "${ROUTER_PREFIX}${CYAN}[VERBOSE]${NC} $*"
+  fi
+
+  if [ "$DRY_RUN" = "false" ]; then
+    "$@"
+  fi
+}
+
 # Load router-specific overrides if they exist
 if [ -f "$ROUTER_OVERRIDES_FILE" ]; then
-  echo "[*] Loading router-specific overrides: $ROUTER_OVERRIDES_FILE"
+  log_info "Loading router-specific overrides: $ROUTER_OVERRIDES_FILE"
   . "$ROUTER_OVERRIDES_FILE"
 fi
 
@@ -34,7 +147,7 @@ apply_vlan_overrides() {
 
   # Check if this VLAN should be disabled on this router
   if [ "$override_disabled" = "1" ]; then
-    echo "    [-] VLAN $vlan_id disabled by router override"
+    log_warning "VLAN $vlan_id disabled by router override"
     return 1
   fi
 
@@ -42,41 +155,52 @@ apply_vlan_overrides() {
 }
 
 # === BACKUP ===
-echo "[*] Backing up current config..."
-uci export > /etc/config/backup-before-vlan.txt
+log_info "Backing up current config..."
+if [ "$DRY_RUN" = "true" ]; then
+  echo -e "${ROUTER_PREFIX}${YELLOW}[DRY-RUN]${NC} uci export > /etc/config/backup-before-vlan.txt"
+else
+  if [ "$VERBOSE" = "true" ]; then
+    echo -e "${ROUTER_PREFIX}${CYAN}[VERBOSE]${NC} uci export > /etc/config/backup-before-vlan.txt"
+  fi
+  uci export > /etc/config/backup-before-vlan.txt
+fi
 
 # === CLEANUP EXISTING VLANs ===
-echo "[*] Cleaning up existing VLANs from switch config..."
-while uci show network | grep -q '=switch_vlan'; do
-  SECTION=$(uci show network | grep '=switch_vlan' | head -n1 | cut -d. -f2 | cut -d= -f1)
-  echo "[*] Removing network.${SECTION}..."
-  uci -q delete "network.${SECTION}"
-done
+log_info "Cleaning up existing VLANs from switch config..."
+VLAN_COUNT=$(uci show network | grep -c '=switch_vlan' || echo "0")
+if [ "$VLAN_COUNT" -gt 0 ]; then
+  # Delete in reverse order to avoid index shifting
+  i=$((VLAN_COUNT - 1))
+  while [ $i -ge 0 ]; do
+    log_info "Removing network.@switch_vlan[$i]..."
+    run_uci -q delete "network.@switch_vlan[$i]"
+    i=$((i - 1))
+  done
+fi
 
 # === CLEANUP PREVIOUS VLAN/DEV INTERFACES ===
-echo "[*] Cleaning up old VLAN-related config..."
-for cfg in $(uci show network | grep -E '=(interface|device)' | cut -d. -f2 | cut -d= -f1); do
-  # Only delete if it matches devNN or vlanNN pattern
-  if echo "$cfg" | grep -Eq '^(dev[0-9]+|vlan[0-9]+)$'; then
-    uci -q delete "network.$cfg"
-  fi
+log_info "Cleaning up old VLAN-related config..."
+VLAN_DEV_CONFIGS=$(uci show network | grep -E '=(interface|device)' | cut -d. -f2 | cut -d= -f1 | grep -E '^(dev[0-9]+|vlan[0-9]+)$')
+for cfg in $VLAN_DEV_CONFIGS; do
+  log_verbose "Removing network.${cfg}..."
+  run_uci -q delete "network.$cfg"
 done
 
 # === DETECT SWITCH ===
 HAS_SWITCH=0
 if uci show network | grep -q '=switch'; then
   HAS_SWITCH=1
-  echo "[*] Switch detected — configuring VLAN on switch0..."
+  log_info "Switch detected — configuring VLAN on switch0..."
 else
-  echo "[*] No switch detected — using ${MAIN_IFACE} directly"
+  log_info "No switch detected — using ${MAIN_IFACE} directly"
 fi
 
 # === PROCESS EACH VLAN CONFIGURATION ===
-echo "[*] Processing VLAN configurations..."
+log_info "Processing VLAN configurations..."
 for FILE in "$CONFIG_DIR"/vlan_*.conf; do
   [ ! -f "$FILE" ] && continue
 
-  echo "[*] Loading config: $FILE"
+  log_info "Loading config: $FILE"
 
   # Load VLAN configuration
   . "$FILE"
@@ -92,21 +216,21 @@ for FILE in "$CONFIG_DIR"/vlan_*.conf; do
     continue
   fi
 
-  echo "    [+] Configuring VLAN $VLAN_ID ($VLAN_NAME)..."
+  log_info "Configuring VLAN $VLAN_ID ($VLAN_NAME)..."
 
   # === SWITCH VLAN CONFIGURATION ===
   if [ "$HAS_SWITCH" = "1" ]; then
-    VLAN_SECTION=$(uci add network switch_vlan)
-    uci set network."$VLAN_SECTION".device='switch0'
-    uci set network."$VLAN_SECTION".vlan="$VLAN_ID"
+    VLAN_SECTION=$(run_uci_capture add network switch_vlan)
+    run_uci set network."$VLAN_SECTION".device='switch0'
+    run_uci set network."$VLAN_SECTION".vlan="$VLAN_ID"
 
     if [ "$VLAN_UNTAGGED" = "1" ]; then
-      echo "        [+] Adding VLAN $VLAN_ID untagged to port $UPLINK_PORT"
-      uci set network."$VLAN_SECTION".ports="${UPLINK_PORT} ${CPU_PORT}t"
+      log_info "Adding VLAN $VLAN_ID untagged to port $UPLINK_PORT"
+      run_uci set network."$VLAN_SECTION".ports="${UPLINK_PORT} ${CPU_PORT}t"
       VLAN_IFACE="$MAIN_IFACE ${MAIN_IFACE}.${VLAN_ID}"
     else
-      echo "        [+] Adding VLAN $VLAN_ID tagged to port $UPLINK_PORT"
-      uci set network."$VLAN_SECTION".ports="${UPLINK_PORT}t ${CPU_PORT}t"
+      log_info "Adding VLAN $VLAN_ID tagged to port $UPLINK_PORT"
+      run_uci set network."$VLAN_SECTION".ports="${UPLINK_PORT}t ${CPU_PORT}t"
       VLAN_IFACE="${MAIN_IFACE}.${VLAN_ID}"
     fi
 
@@ -114,10 +238,10 @@ for FILE in "$CONFIG_DIR"/vlan_*.conf; do
     BRIDGE_NAME="br-vlan${VLAN_ID}"
     DEVICE_NAME="dev${VLAN_ID}"
 
-    uci set network.$DEVICE_NAME=device
-    uci set network.$DEVICE_NAME.name="$BRIDGE_NAME"
-    uci set network.$DEVICE_NAME.type='bridge'
-    uci set network.$DEVICE_NAME.ports="$VLAN_IFACE"
+    run_uci set network.$DEVICE_NAME=device
+    run_uci set network.$DEVICE_NAME.name="$BRIDGE_NAME"
+    run_uci set network.$DEVICE_NAME.type='bridge'
+    run_uci set network.$DEVICE_NAME.ports="$VLAN_IFACE"
 
     INTERFACE_DEVICE="$BRIDGE_NAME"
   else
@@ -129,9 +253,9 @@ for FILE in "$CONFIG_DIR"/vlan_*.conf; do
       BRIDGE_NAME="br-vlan${VLAN_ID}"
       DEVICE_NAME="dev${VLAN_ID}"
 
-      uci set network.$DEVICE_NAME=device
-      uci set network.$DEVICE_NAME.name="$BRIDGE_NAME"
-      uci set network.$DEVICE_NAME.type='bridge'
+      run_uci set network.$DEVICE_NAME=device
+      run_uci set network.$DEVICE_NAME.name="$BRIDGE_NAME"
+      run_uci set network.$DEVICE_NAME.type='bridge'
 
       INTERFACE_DEVICE="$BRIDGE_NAME"
     fi
@@ -140,16 +264,16 @@ for FILE in "$CONFIG_DIR"/vlan_*.conf; do
   # === CREATE NETWORK INTERFACE ===
   INTERFACE_NAME="vlan$VLAN_ID"
 
-  uci set network.$INTERFACE_NAME=interface
-  uci set network.$INTERFACE_NAME.device="$INTERFACE_DEVICE"
-  uci set network.$INTERFACE_NAME.proto="$VLAN_PROTO"
+  run_uci set network.$INTERFACE_NAME=interface
+  run_uci set network.$INTERFACE_NAME.device="$INTERFACE_DEVICE"
+  run_uci set network.$INTERFACE_NAME.proto="$VLAN_PROTO"
 
   # Configure static IP if specified
   if [ "$VLAN_PROTO" = "static" ]; then
-    [ -n "$VLAN_IPADDR" ] && uci set network.$INTERFACE_NAME.ipaddr="$VLAN_IPADDR"
-    [ -n "$VLAN_NETMASK" ] && uci set network.$INTERFACE_NAME.netmask="$VLAN_NETMASK"
-    [ -n "$VLAN_GATEWAY" ] && uci set network.$INTERFACE_NAME.gateway="$VLAN_GATEWAY"
-    [ -n "$VLAN_DNS" ] && uci set network.$INTERFACE_NAME.dns="$VLAN_DNS"
+    [ -n "$VLAN_IPADDR" ] && run_uci set network.$INTERFACE_NAME.ipaddr="$VLAN_IPADDR"
+    [ -n "$VLAN_NETMASK" ] && run_uci set network.$INTERFACE_NAME.netmask="$VLAN_NETMASK"
+    [ -n "$VLAN_GATEWAY" ] && run_uci set network.$INTERFACE_NAME.gateway="$VLAN_GATEWAY"
+    [ -n "$VLAN_DNS" ] && run_uci set network.$INTERFACE_NAME.dns="$VLAN_DNS"
   fi
 
   # Apply extra UCI options if any
@@ -157,7 +281,7 @@ for FILE in "$CONFIG_DIR"/vlan_*.conf; do
     for ENTRY in $VLAN_EXTRA; do
       KEY=$(echo "$ENTRY" | cut -d= -f1)
       VALUE=$(echo "$ENTRY" | cut -d= -f2-)
-      uci set network.$INTERFACE_NAME.$KEY="$VALUE"
+      run_uci set network.$INTERFACE_NAME.$KEY="$VALUE"
     done
   fi
 
@@ -166,19 +290,21 @@ for FILE in "$CONFIG_DIR"/vlan_*.conf; do
 done
 
 # === Disable services that are not used in dumb AP's ===
+log_info "Disabling firewall, dnsmasq, odhcpd..."
 for i in firewall dnsmasq odhcpd; do
-    echo "[*] Disabling $i..."
-    if /etc/init.d/"$i" enabled; then
-        /etc/init.d/"$i" disable
-    fi
+    log_verbose "Stopping $i if running..."
     if /etc/init.d/"$i" running; then
-        /etc/init.d/"$i" stop
+        run_cmd /etc/init.d/"$i" stop
+    fi
+    log_verbose "Disabling $i if enabled..."
+    if /etc/init.d/"$i" enabled; then
+        run_cmd /etc/init.d/"$i" disable
     fi
 done
 
 # === APPLY CONFIG ===
-echo "[*] Applying configuration..."
-uci commit
-/etc/init.d/network reload
+log_info "Applying configuration..."
+run_uci commit
+run_cmd /etc/init.d/network reload
 
-echo "[+] Done."
+log_success "Done."

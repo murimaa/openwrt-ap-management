@@ -26,11 +26,13 @@ NC='\033[0m' # No Color
 usage() {
     echo "Usage: $0 [OPTIONS] <router-config.conf> [router-config2.conf ...]"
     echo ""
-    echo "Deploy wireless configuration to OpenWRT routers using router config files."
+    echo "Deploy wireless configuration to OpenWrt routers using router config files."
     echo ""
     echo "Options:"
     echo "  -d, --dry-run     Show what would be deployed without making changes"
+    echo "                    (passed to setup script - shows UCI commands without executing)"
     echo "  -v, --verbose     Enable verbose output"
+    echo "                    (passed to setup script - shows all UCI commands being executed)"
     echo "  -h, --help        Show this help message"
     echo ""
     echo "Examples:"
@@ -38,6 +40,7 @@ usage() {
     echo "  $0 routers/main-router.conf routers/bedroom-router.conf"
     echo "  $0 routers/*.conf"
     echo "  $0 -d routers/main-router.conf  # Dry run"
+    echo "  $0 -v routers/main-router.conf  # Verbose execution"
     echo ""
     echo "Router config files should contain:"
     echo "  ROUTER_IP=\"192.168.1.1\""
@@ -195,8 +198,6 @@ deploy_to_router() {
             cat "$override_content_file" | sed 's/^/    /'
         fi
         log_info "[DRY RUN] Would execute setup script on $ROUTER_IP"
-        rm -f "$override_content_file"
-        return 0
     fi
 
     # Create temporary directory on router
@@ -234,9 +235,14 @@ deploy_to_router() {
     # Clean up local temp file
     rm -f "$override_content_file"
 
+    # Build setup script arguments
+    local setup_args=""
+    [ "$dry_run" = "true" ] && setup_args="$setup_args -d"
+    [ "$VERBOSE" = "true" ] && setup_args="$setup_args -v"
+
     # Make setup script executable and run it
     log_info "Executing setup script..."
-    if ssh $ssh_cmd_opts "$SSH_USER@$ROUTER_IP" "cd $temp_dir && chmod +x $SETUP_SCRIPT && ./$SETUP_SCRIPT"; then
+    if ssh $ssh_cmd_opts "$SSH_USER@$ROUTER_IP" "cd $temp_dir && chmod +x $SETUP_SCRIPT && ROUTER_NAME='$ROUTER_NAME' ROUTER_IP='$ROUTER_IP' ./$SETUP_SCRIPT $setup_args"; then
         log_success "Configuration applied successfully on $ROUTER_NAME ($ROUTER_IP)"
 
         # Cleanup

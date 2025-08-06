@@ -1,13 +1,111 @@
 #!/bin/sh
 
 CONFIG_DIR="./wireless-configs"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Default options
+DRY_RUN=false
+VERBOSE=false
+
+# Get router identification for logging
+ROUTER_PREFIX=""
+if [ -n "$ROUTER_NAME" ]; then
+    ROUTER_PREFIX="[$ROUTER_NAME] "
+elif [ -n "$ROUTER_IP" ]; then
+    ROUTER_PREFIX="[$ROUTER_IP] "
+fi
+
+# Parse command line arguments
+while [ $# -gt 0 ]; do
+  case $1 in
+    -d|--dry-run)
+      DRY_RUN=true
+      shift
+      ;;
+    -v|--verbose)
+      VERBOSE=true
+      shift
+      ;;
+    -h|--help)
+      echo "Usage: $0 [OPTIONS]"
+      echo ""
+      echo "Options:"
+      echo "  -d, --dry-run     Show commands without executing them"
+      echo "  -v, --verbose     Show commands being executed"
+      echo "  -h, --help        Show this help message"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1"
+      exit 1
+      ;;
+  esac
+done
+
+# Logging functions
+log_verbose() {
+    if [ "$VERBOSE" = "true" ]; then
+        echo -e "${ROUTER_PREFIX}${CYAN}[VERBOSE]${NC} $1"
+    fi
+}
+
+log_info() {
+    echo -e "${ROUTER_PREFIX}${BLUE}[INFO]${NC} $1"
+}
+
+log_success() {
+    echo -e "${ROUTER_PREFIX}${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${ROUTER_PREFIX}${YELLOW}[WARNING]${NC} $1"
+}
+
+log_error() {
+    echo -e "${ROUTER_PREFIX}${RED}[ERROR]${NC} $1"
+}
+
+# UCI wrapper function
+run_uci() {
+  if [ "$DRY_RUN" = "true" ]; then
+    echo -e "${ROUTER_PREFIX}${YELLOW}[DRY-RUN]${NC} uci $*"
+  elif [ "$VERBOSE" = "true" ]; then
+    echo -e "${ROUTER_PREFIX}${CYAN}[VERBOSE]${NC} uci $*"
+  fi
+
+  if [ "$DRY_RUN" = "false" ]; then
+    uci "$@"
+  fi
+}
+
+# Other command wrapper function
+run_cmd() {
+  if [ "$DRY_RUN" = "true" ]; then
+    echo -e "${ROUTER_PREFIX}${YELLOW}[DRY-RUN]${NC} $*"
+  elif [ "$VERBOSE" = "true" ]; then
+    echo -e "${ROUTER_PREFIX}${CYAN}[VERBOSE]${NC} $*"
+  fi
+
+  if [ "$DRY_RUN" = "false" ]; then
+    "$@"
+  fi
+}
+
 RADIOS=$(uci show wireless | grep "=wifi-device" | cut -d. -f2 | cut -d= -f1)
 
 
 # Load router-specific overrides if they exist
 ROUTER_OVERRIDES_FILE="$CONFIG_DIR/router-overrides.conf"
 if [ -f "$ROUTER_OVERRIDES_FILE" ]; then
-  echo "[*] Loading router-specific overrides: $ROUTER_OVERRIDES_FILE"
+  log_info "Loading router-specific overrides: $ROUTER_OVERRIDES_FILE"
   . "$ROUTER_OVERRIDES_FILE"
   # Apply global overrides
 fi
@@ -33,7 +131,7 @@ apply_ssid_overrides() {
 
   # Check if this SSID should be disabled on this router
   if [ "$override_disabled" = "1" ]; then
-    echo "    [-] SSID '$SSID_NAME' disabled by router override"
+    log_warning "SSID '$SSID_NAME' disabled by router override"
     return 1
   fi
 
@@ -51,22 +149,23 @@ apply_radio_overrides() {
   eval "override_country=\$RADIO_OVERRIDE_${radio}_country"
 
   # Apply overrides if they exist
-  [ -n "$override_channel" ] && uci set wireless.$radio.channel="$override_channel"
-  [ -n "$override_txpower" ] && uci set wireless.$radio.txpower="$override_txpower"
-  [ -n "$override_htmode" ] && uci set wireless.$radio.htmode="$override_htmode"
-  [ -n "$override_country" ] && uci set wireless.$radio.country="$override_country"
+  [ -n "$override_channel" ] && run_uci set wireless.$radio.channel="$override_channel"
+  [ -n "$override_txpower" ] && run_uci set wireless.$radio.txpower="$override_txpower"
+  [ -n "$override_htmode" ] && run_uci set wireless.$radio.htmode="$override_htmode"
+  [ -n "$override_country" ] && run_uci set wireless.$radio.country="$override_country"
 }
 
-echo "[*] Cleaning up existing wireless interfaces..."
+log_info "Cleaning up existing wireless interfaces..."
 for iface in $(uci show wireless | grep "=wifi-iface" | cut -d. -f2 | cut -d= -f1); do
-  uci delete wireless.$iface
+  log_verbose "Deleting interface wireless.$iface"
+  run_uci delete wireless.$iface
 done
 
 for FILE in "$CONFIG_DIR"/ssid*.conf; do
   # Skip the router overrides file
   [ "$FILE" = "$ROUTER_OVERRIDES_FILE" ] && continue
 
-  echo "[*] Loading config: $FILE"
+  log_info "Loading config: $FILE"
   . "$FILE"
 
   SSID_HIDDEN=${SSID_HIDDEN:-0}
@@ -86,38 +185,38 @@ for FILE in "$CONFIG_DIR"/ssid*.conf; do
 
     # Skip this radio if it's not in the specified bands
     if ! echo "$SSID_BANDS" | grep -q "$BAND"; then
-      echo "    [-] Skipping SSID '$SSID_NAME' on $BAND ($RADIO) - not in specified bands: $SSID_BANDS"
+      log_warning "Skipping SSID '$SSID_NAME' on $BAND ($RADIO) - not in specified bands: $SSID_BANDS"
       continue
     fi
 
     IFNAME="${SSID_NETWORK}_${BAND:-$(echo $RADIO | tr -cd '0-9')}"
 
-    echo "    [+] Applying SSID '$SSID_NAME' to $BAND on $RADIO..."
+    log_info "Applying SSID '$SSID_NAME' to $BAND on $RADIO..."
 
-    uci set wireless.$IFNAME="wifi-iface"
-    uci set wireless.$IFNAME.device="$RADIO"
-    uci set wireless.$IFNAME.mode="ap"
-    uci set wireless.$IFNAME.ssid="$SSID_NAME"
-    uci set wireless.$IFNAME.encryption="$SSID_ENCRYPTION"
-    uci set wireless.$IFNAME.key="$SSID_KEY"
-    uci set wireless.$IFNAME.network="$SSID_NETWORK"
-    uci set wireless.$IFNAME.disabled="0"
+    run_uci set wireless.$IFNAME="wifi-iface"
+    run_uci set wireless.$IFNAME.device="$RADIO"
+    run_uci set wireless.$IFNAME.mode="ap"
+    run_uci set wireless.$IFNAME.ssid="$SSID_NAME"
+    run_uci set wireless.$IFNAME.encryption="$SSID_ENCRYPTION"
+    run_uci set wireless.$IFNAME.key="$SSID_KEY"
+    run_uci set wireless.$IFNAME.network="$SSID_NETWORK"
+    run_uci set wireless.$IFNAME.disabled="0"
 
 
     if [ "$SSID_HIDDEN" = "1" ]; then
-        uci set wireless.$IFNAME.hidden="$SSID_HIDDEN"
+        run_uci set wireless.$IFNAME.hidden="$SSID_HIDDEN"
     fi
     if [ "$SSID_FAST_ROAM" = "1" ]; then
-      uci set wireless.$IFNAME.ieee80211r="1"
-      uci set wireless.$IFNAME.ft_over_ds="0"
-      uci set wireless.$IFNAME.ft_psk_generate_local="1"
+      run_uci set wireless.$IFNAME.ieee80211r="1"
+      run_uci set wireless.$IFNAME.ft_over_ds="0"
+      run_uci set wireless.$IFNAME.ft_psk_generate_local="1"
     fi
     # Apply extra UCI options if any
     if [ -n "$SSID_EXTRA" ]; then
       for ENTRY in $SSID_EXTRA; do
         KEY=$(echo "$ENTRY" | cut -d= -f1)
         VALUE=$(echo "$ENTRY" | cut -d= -f2-)
-        uci set wireless.$IFNAME.$KEY="$VALUE"
+        run_uci set wireless.$IFNAME.$KEY="$VALUE"
       done
     fi
   done
@@ -126,16 +225,18 @@ for FILE in "$CONFIG_DIR"/ssid*.conf; do
   unset SSID_NAME SSID_KEY SSID_NETWORK SSID_HIDDEN SSID_ENCRYPTION SSID_FAST_ROAM SSID_EXTRA SSID_BANDS
 done
 
-echo "[*] Enabling radios..."
+log_info "Enabling radios..."
 for RADIO in $RADIOS; do
-  uci set wireless.$RADIO.disabled='0'
-  [ -n "$COUNTRY_CODE" ] && uci set wireless.$RADIO.country="$COUNTRY_CODE"
-  uci set wireless.$RADIO.channel='auto'
+  run_uci set wireless.$RADIO.disabled='0'
+  [ -n "$COUNTRY_CODE" ] && run_uci set wireless.$RADIO.country="$COUNTRY_CODE"
+  run_uci set wireless.$RADIO.channel='auto'
 
   # Apply router-specific radio overrides
   apply_radio_overrides "$RADIO"
 done
 
-echo "[*] Committing wireless config and reloading..."
-uci commit wireless
-wifi reload
+log_info "Committing wireless config and reloading..."
+run_uci commit wireless
+run_cmd wifi reload
+
+log_success "Done."
