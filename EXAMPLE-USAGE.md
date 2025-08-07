@@ -17,7 +17,18 @@ Your shared VLAN configs are in `network-configs/`:
 
 **Example VLAN configurations:**
 
-**network-configs/vlan_20.conf:**
+**network-configs/vlan_10_mgmt.conf:**
+```bash
+VLAN_ID="10"
+VLAN_NAME="mgmt"
+VLAN_DESCRIPTION="Management Network"
+# This VLAN is tagged on uplink port (trunk port)
+# You can also override this per AP if it varies
+VLAN_UNTAGGED="0"
+VLAN_PROTO="dhcp"  # Access point gets IP on this VLAN
+```
+
+**network-configs/vlan_20_main.conf:**
 ```bash
 #!/bin/sh
 # Main User Network
@@ -25,10 +36,10 @@ VLAN_ID="20"
 VLAN_NAME="main"
 VLAN_DESCRIPTION="Main user network"
 VLAN_UNTAGGED="0"
-VLAN_PROTO="none"  # Dumb AP - no IP configuration
+VLAN_PROTO="none"  # Dumb AP - no IP configuration (default)
 ```
 
-**network-configs/vlan_30.conf:**
+**network-configs/vlan_30_guest.conf:**
 ```bash
 #!/bin/sh
 # Guest Network
@@ -36,8 +47,11 @@ VLAN_ID="30"
 VLAN_NAME="guest"
 VLAN_DESCRIPTION="Guest network"
 VLAN_UNTAGGED="0"
-VLAN_PROTO="none"
+VLAN_PROTO="none"  # Dumb AP - no IP configuration (default)
 ```
+
+**network-configs/vlan_40_iot.conf**
+**other vlans similarly**
 
 ### Step 2: Set Up Your SSID Configurations
 
@@ -49,7 +63,9 @@ Your shared SSID configs are in `wireless-configs/`:
 
 **Example SSID configurations:**
 
-**wireless-configs/ssid_main.conf:**
+**No SSID defined for vlan10 (management)**
+
+**wireless-configs/ssid_vlan20_main.conf:**
 ```bash
 #!/bin/sh
 # Main Home Network
@@ -57,12 +73,12 @@ SSID_NAME="HomeNetwork"
 SSID_KEY="your-secure-password-123"
 SSID_NETWORK="vlan20"      # VLAN 20 is main network
 SSID_HIDDEN="0"
-SSID_ENCRYPTION="sae"
-SSID_FAST_ROAM="0"
-SSID_BANDS="2g 5g"
+SSID_ENCRYPTION="sae" # WPA3 for security
+SSID_FAST_ROAM="1"
+SSID_BANDS="5g" # Just 5GHz for main network
 ```
 
-**wireless-configs/ssid_guest.conf:**
+**wireless-configs/ssid_vlan30_guest.conf:**
 ```bash
 #!/bin/sh
 # Guest Network
@@ -71,9 +87,24 @@ SSID_KEY="guest-password-456"
 SSID_NETWORK="vlan30"     # VLAN 30 is guest network
 SSID_HIDDEN="0"
 SSID_ENCRYPTION="sae"
-SSID_FAST_ROAM="0"
+SSID_FAST_ROAM="1"
 SSID_BANDS="2g 5g"
 ```
+
+**wireless-configs/ssid_vlan40_iot.conf**
+```bash
+#!/bin/sh
+# IoT Devices Network
+SSID_NAME="IoTNWifi"
+SSID_KEY="iot-password-789"
+SSID_NETWORK="vlan40"     # VLAN 40 is IoT network
+SSID_HIDDEN="0"
+SSID_ENCRYPTION="sae-mixed" # Mixed WPA2/WPA3 for compatibility
+SSID_FAST_ROAM="0"
+SSID_BANDS="2g" # only 2.4GHz needed for IoT devices
+```
+
+**other ssids similarly**
 
 ### Step 3: Create Access Point Configuration Files
 
@@ -90,23 +121,35 @@ SSH_USER="root"
 SSH_PORT="22"
 
 # Network configuration (VLAN setup)
+# Device specific - Refer to /etc/board.json!
+# CPU port looks something like this:
+# "ports": [
+#				{
+#					"num": 0, <-- CPU_PORT="0"
+#					"device": "eth0",
+#					"need_tag": false,
+#					"want_untag": false
+#				},
+#       ...
+#  ]
 MAIN_IFACE="eth0"
 UPLINK_PORT="1"
-CPU_PORT="6"
+CPU_PORT="0"
 
 # Network overrides - all VLANs enabled on main access point
 # No VLAN overrides needed - using defaults
 
 # Wireless configuration
 # Main access point gets full power and all networks
+# Bands in radio0 and radio1 may be in either order depending on device
 RADIO_OVERRIDE_radio0_channel="6"        # 2.4GHz
 RADIO_OVERRIDE_radio1_channel="36"       # 5GHz
 RADIO_OVERRIDE_radio0_txpower="20"       # Max power
 RADIO_OVERRIDE_radio1_txpower="23"       # Max power
 
 # Optimize for performance
-SSID_OVERRIDE_main_fast_roam="1"
-SSID_OVERRIDE_main_extra="max_inactivity=7200"
+SSID_OVERRIDE_vlan20_fast_roam="1"
+SSID_OVERRIDE_vlan20_extra="max_inactivity=7200"
 ```
 
 **aps/ap-bedroom.conf:**
@@ -119,29 +162,24 @@ AP_LOCATION="Master bedroom"
 SSH_USER="root"
 SSH_PORT="22"
 
-# Network configuration
 MAIN_IFACE="eth0"
 UPLINK_PORT="0"
 CPU_PORT="6"
 
-# Network overrides - disable guest network in bedroom
 VLAN_OVERRIDE_30_disabled="1"    # No guest network in private areas
+VLAN_OVERRIDE_10_untagged="1"    # Management VLAN is untagged in bedroom uplink port
 
-# Wireless configuration 
 # Bedroom access point uses different channels and lower power
 # Different channels to avoid interference
 RADIO_OVERRIDE_radio0_channel="11"       # 2.4GHz
 RADIO_OVERRIDE_radio1_channel="149"      # 5GHz
-
-# Lower power for bedroom (health/sleep concerns)
+# Lower power for bedroom
 RADIO_OVERRIDE_radio0_txpower="15"
 RADIO_OVERRIDE_radio1_txpower="18"
 
 # Disable guest network in private area
-SSID_OVERRIDE_guest_disabled="1"
+SSID_OVERRIDE_vlan30_disabled="1"
 
-# IoT only on 2.4GHz for better wall penetration
-SSID_OVERRIDE_iot_bands="2g"
 ```
 
 **aps/ap-garage.conf:**
@@ -172,8 +210,8 @@ RADIO_OVERRIDE_radio0_txpower="18"
 RADIO_OVERRIDE_radio1_txpower="20"
 
 # Only main network and IoT in garage
-SSID_OVERRIDE_guest_disabled="1"
-SSID_OVERRIDE_main_extra="max_inactivity=3600"
+SSID_OVERRIDE_vlan30_disabled="1"
+SSID_OVERRIDE_vlan20_extra="max_inactivity=3600"
 ```
 
 ### Step 4: Deploy Complete Infrastructure
@@ -181,13 +219,13 @@ SSID_OVERRIDE_main_extra="max_inactivity=3600"
 Now you can deploy both network and wireless configurations:
 
 ```bash
-# Deploy complete infrastructure to single access point (test first)
+# Deploy complete setings to single access point (dry-run, test first)
 ./deploy-complete.sh -d aps/ap-living-room.conf
 
-# Deploy complete infrastructure (actual deployment)
-./deploy-complete.sh aps/ap-living-room.conf
+# Deploy complete settings (actual deployment), with backup of current config
+./deploy-complete.sh -b aps/ap-living-room.conf
 
-# Deploy to all access points
+# Deploy to all access points (new vlan and ssid added, enable for all devices)
 ./deploy-complete.sh aps/*.conf
 
 # Deploy only networks or only wireless
@@ -230,9 +268,9 @@ RADIO_OVERRIDE_radio0_txpower="20"  # High power for concrete walls
 RADIO_OVERRIDE_radio1_txpower="23"
 
 # Only main network needed in basement
-SSID_OVERRIDE_guest_disabled="1"
-SSID_OVERRIDE_iot_disabled="1"  # No separate IoT SSID
-SSID_OVERRIDE_main_bands="2g 5g"  # Main network on both bands
+SSID_OVERRIDE_vlan30_disabled="1"
+SSID_OVERRIDE_vlan40_disabled="1"  # No separate IoT SSID
+SSID_OVERRIDE_vlan20_bands="2g 5g"  # Main network on both bands
 ```
 
 2. **Test and deploy:**
@@ -243,11 +281,11 @@ SSID_OVERRIDE_main_bands="2g 5g"  # Main network on both bands
 
 ### Scenario 2: Updating Network Infrastructure
 
-You want to add a new VLAN for security cameras across all access points:
+You have created a new VLAN for security cameras, and want to add it across all access points.
 
 1. **Create the new VLAN config:**
+**network-configs/vlan_50_cameras.conf:**
 ```bash
-# network-configs/vlan_50.conf
 #!/bin/sh
 # Security Camera Network
 VLAN_ID="50"
@@ -258,16 +296,16 @@ VLAN_PROTO="none"
 ```
 
 2. **Create corresponding wireless network:**
+**wireless-configs/ssid_vlan50_cameras.conf:**
 ```bash
-# wireless-configs/ssid_cameras.conf
 #!/bin/sh
 # Camera Management WiFi
-SSID_NAME="CameraAdmin"
-SSID_KEY="camera-mgmt-password-789"
+SSID_NAME="WifiForCameras"
+SSID_KEY="camera-password-789"
 SSID_NETWORK="vlan50"  # Maps to cameras VLAN
 SSID_HIDDEN="1"         # Hidden network
-SSID_ENCRYPTION="sae"
-SSID_BANDS="5g"         # High bandwidth for camera access
+SSID_ENCRYPTION="sae-mixed" # Mixed WPA2/WPA3 for compatibility
+SSID_BANDS="5g"         # High bandwidth for camera access (if cameras support 5GHz)
 ```
 
 3. **Deploy to all access points:**
@@ -347,12 +385,10 @@ RADIO_OVERRIDE_radio1_htmode="VHT80"  # Max performance on 5GHz
 SSID_OVERRIDE_guest_disabled="1"
 
 # Optimize main network for work devices
-SSID_OVERRIDE_main_encryption="sae"  # WPA3 for security
-SSID_OVERRIDE_main_fast_roam="1"     # Seamless roaming for laptops
-SSID_OVERRIDE_main_extra="max_inactivity=14400 disassoc_low_ack=0"
+SSID_OVERRIDE_vlan20_extra="max_inactivity=14400 disassoc_low_ack=0"
 
 # IoT network for office devices (printers, etc.) - only if IoT VLAN enabled
-SSID_OVERRIDE_iot_extra="isolate=1 max_num_sta=30"
+SSID_OVERRIDE_vlan40_extra="isolate=1 max_num_sta=30"
 ```
 
 2. **Deploy just the bedroom access point:**
@@ -388,125 +424,7 @@ ssh-copy-id -p 2222 root@192.168.1.20
 ./deploy-complete.sh routers/secure-router.conf
 ```
 
-## Advanced Examples
-
-### Network Hardware-Specific Optimizations
-
-Different router models have different switch configurations. Network-specific optimizations should go in `network-configs/common-overrides.conf`:
-
-**Global network optimizations** (`network-configs/common-overrides.conf`):
-```bash
-#!/bin/sh
-# Hardware-specific network adjustments applied to all access points
-
-HARDWARE_MODEL=$(cat /tmp/sysinfo/model 2>/dev/null || echo "unknown")
-
-case "$HARDWARE_MODEL" in
-    *"Archer C7"*)
-        # Archer C7 switch configuration
-        MAIN_IFACE="eth1"
-        UPLINK_PORT="1"
-        CPU_PORT="0"
-        ;;
-    *"Archer AX"*)
-        # AX series switch configuration
-        MAIN_IFACE="eth0"
-        UPLINK_PORT="1"
-        CPU_PORT="6"
-        ;;
-    *"Netgear"*)
-        # Netgear switch configuration
-        MAIN_IFACE="eth0"
-        UPLINK_PORT="0"
-        CPU_PORT="5"
-        ;;
-esac
-```
-
-### Wireless Hardware-Specific Optimizations
-
-Different access point models need different wireless settings. Most hardware-specific optimizations should go in `wireless-configs/common-overrides.conf` to apply to all access points:
-
-**Global wireless optimizations** (`wireless-configs/common-overrides.conf`):
-```bash
-#!/bin/sh
-# Hardware-specific adjustments applied to all access points
-
-# Set country code if needed (optional - no default is set)
-# COUNTRY_CODE="FI"
-
-HARDWARE_MODEL=$(cat /tmp/sysinfo/model 2>/dev/null || echo "unknown")
-
-case "$HARDWARE_MODEL" in
-    *"Archer C7"*)
-        # Archer C7 specific settings
-        RADIO_OVERRIDE_radio0_txpower="17"  # C7 runs hot
-        RADIO_OVERRIDE_radio1_txpower="20"
-        RADIO_OVERRIDE_radio0_htmode="HT20" # More stable
-        ;;
-    *"Archer AX"*)
-        # AX series can handle more
-        RADIO_OVERRIDE_radio0_txpower="20"
-        RADIO_OVERRIDE_radio1_txpower="23"
-        RADIO_OVERRIDE_radio1_htmode="HE80"  # WiFi 6
-        ;;
-    *"Netgear"*)
-        # Netgear access points - good thermal management
-        RADIO_OVERRIDE_radio0_txpower="18"
-        RADIO_OVERRIDE_radio1_txpower="21"
-        ;;
-esac
-```
-
-**Access point-specific overrides** (only if this access point needs different settings):
-```bash
-# aps/ap-special-archer.conf
-#!/bin/sh
-AP_IP="192.168.1.25"
-AP_NAME="ap-special-archer"
-SSH_USER="root"
-SSH_PORT="22"
-
-# Base settings
-RADIO_OVERRIDE_radio0_channel="11"
-RADIO_OVERRIDE_radio1_channel="149"
-
-# Override the common settings for this specific access point
-RADIO_OVERRIDE_radio0_txpower="14"  # Even lower for this location
-```
-
 ## Debugging and Troubleshooting
-
-### Verbose Deployment
-
-See exactly what's happening during deployment:
-
-```bash
-./deploy-complete.sh -v aps/ap-problem.conf
-./deploy-networks.sh -v aps/ap-problem.conf   # Networks only
-./deploy-wireless.sh -v aps/ap-problem.conf   # Wireless only
-```
-
-### Dry Run Testing
-
-Always test before deploying:
-
-```bash
-# Test complete infrastructure on single access point
-./deploy-complete.sh -d aps/ap-new.conf
-
-# Test networks only
-./deploy-networks.sh -d aps/ap-new.conf
-
-# Test wireless only
-./deploy-wireless.sh -d aps/ap-new.conf
-
-# Test all routers
-./deploy-complete.sh aps/*.conf
-
-# Test with verbose output
-./deploy-complete.sh -v -d aps/*.conf
-```
 
 ### Manual Verification
 
@@ -532,91 +450,17 @@ swconfig dev switch0 show
 logread | grep -E "(network|wireless)"
 
 # Check what overrides were applied
-cat /tmp/network-config-*/network-configs/router-overrides.conf
-cat /tmp/wireless-config-*/wireless-configs/router-overrides.conf
+cat /tmp/network-config-*/network-configs/overrides.conf
+cat /tmp/wireless-config-*/wireless-configs/overrides.conf
 ```
 
 ## Best Practices
 
-1. **Always test first:** Use `-d` (dry run) before actual deployment
-2. **Use version control:** Keep your access point configs in git
-3. **Use common overrides wisely:** Put hardware-specific settings in `common-overrides.conf`, AP-specific settings in individual access point configs
-4. **Plan your VLANs:** Design your VLAN structure before deployment - changing VLANs later requires network reconfiguration
-5. **Test network first:** Deploy networks before wireless to ensure VLAN structure is correct
-6. **Set country code only if needed:** Country code has no default - only set `COUNTRY_CODE` if your deployment requires it
-7. **Document changes:** Add comments explaining why you made specific overrides
-8. **Test incrementally:** Deploy to one access point first, then expand
-9. **Keep backups:** Access point configs are small, keep backups of working configurations
-10. **Use descriptive names:** Access point names should match their physical location/purpose
-11. **Consistent naming:** Use consistent naming schemes for easy management
-12. **Map SSIDs to VLANs:** Ensure wireless network names match VLAN network names for proper mapping
-
-## Common Patterns
-
-In these examples radio0 is the 2.4GHz radio and radio1 is the 5GHz radio. This may vary depending on the AP model.
-
-### Complete Infrastructure Setup
-```bash
-# Network and wireless with optimized settings
-# Network settings
-MAIN_IFACE="eth0"
-UPLINK_PORT="1"
-CPU_PORT="6"
-
-# Wireless settings
-RADIO_OVERRIDE_radio0_htmode="HT40"
-RADIO_OVERRIDE_radio1_htmode="VHT80"
-RADIO_OVERRIDE_radio0_txpower="20"
-RADIO_OVERRIDE_radio1_txpower="23"
-SSID_OVERRIDE_main_fast_roam="1"
-
-# Ensure SSID maps to VLAN
-SSID_OVERRIDE_main_network="vlan20"     # Maps to main network
-SSID_OVERRIDE_guest_network="vlan30"   # Maps to guest network
-```
-
-### VLAN-Only Setup (No Wireless)
-```bash
-# Pure switching setup - disable all wireless
-SSID_OVERRIDE_main_disabled="1"
-SSID_OVERRIDE_guest_disabled="1"
-SSID_OVERRIDE_iot_disabled="1"
-
-# Network configuration only
-MAIN_IFACE="eth0"
-UPLINK_PORT="1"
-CPU_PORT="6"
-```
-
-### High-Performance Setup
-```bash
-# Maximum performance settings
-RADIO_OVERRIDE_radio0_htmode="HT40"
-RADIO_OVERRIDE_radio1_htmode="VHT80"
-RADIO_OVERRIDE_radio0_txpower="20"
-RADIO_OVERRIDE_radio1_txpower="23"
-SSID_OVERRIDE_main_fast_roam="1"
-```
-
-### Low-Power Setup
-```bash
-# Reduced power settings
-RADIO_OVERRIDE_radio0_txpower="12"
-RADIO_OVERRIDE_radio1_txpower="15"
-RADIO_OVERRIDE_radio0_htmode="HT20"
-RADIO_OVERRIDE_radio1_htmode="VHT40"
-```
-
-### Guest-Network-Only Setup
-```bash
-# Network: only guest VLAN
-VLAN_OVERRIDE_20_disabled="1"  # Disable main network VLAN
-VLAN_OVERRIDE_40_disabled="1"  # Disable IoT VLAN
-
-# Wireless: only guest SSID
-SSID_OVERRIDE_main_disabled="1"
-SSID_OVERRIDE_iot_disabled="1"
-SSID_OVERRIDE_guest_extra="isolate=1 max_num_sta=10 max_inactivity=1800"
-```
-
-This unified approach gives you complete control over both network infrastructure (VLANs) and wireless access across all access points while maintaining shared configurations and simple deployment workflows. The system ensures wireless networks are properly mapped to VLANs for complete network segmentation.
+- **Always test first:** Use `-d` (dry run) before actual deployment
+- **Use version control:** Keep your access point configs in git
+- **Test network first:** Deploy networks before wireless to ensure VLAN structure is correct
+- **Set country code if needed:** Country code has no default - set `COUNTRY_CODE` if your area requires it
+- **Document changes:** Add comments explaining why you made specific overrides
+- **Test incrementally:** Deploy to one access point first, then expand
+- **Keep backups:** Access point configs are small, keep backups of working configurations
+- **Use descriptive names:** Access point names should match their physical location/purpose

@@ -2,3 +2,4 @@ setup_networks.conf
 wireless-configs/*.conf
 network-configs/*.conf
 aps/*.conf
+COMMON-OVERRIDES.md

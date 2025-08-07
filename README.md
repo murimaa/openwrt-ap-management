@@ -4,11 +4,15 @@ Use case: You already have a network with VLANS and you want to setup/manage wif
 
 Designed to be used on fresh OpenWRT installations - **IF YOU HAVE EXISTING CONFIGURATIONS, PROCEED WITH CAUTION!** Please backup your current configuration.
 
-## 🏗️ Unified Architecture
+### Caveats
 
-This system provides automated deployment and management of **VLAN-segregated WiFi Access Points** running OpenWRT. It's designed for managing dumb APs that provide wireless access to segmented networks, not full routing functionality.
+- The script **disables switch ports** except for the uplink port. So if your device has multiple ports and you're using them, the script as-is will not work for you currently.
 
-### 1. **Network Deployment** (`deploy-networks.sh`)
+### 1. **Backup Existing Configuration** (`backup-config.sh`)
+
+Exports the currents network and wireless configurations from all APs.
+
+### 1. **Network Setup** (`deploy-networks.sh`)
 
 Configures VLAN network segmentation on OpenWRT access points, setting up trunk ports and VLAN interfaces for network isolation.
 
@@ -18,40 +22,28 @@ Deploys wireless networks (SSIDs) mapped to specific VLANs, creating segmented W
 
 ### 3. **Complete Deployment** (`deploy-complete.sh`)
 
-Deploys both network and wireless configurations simultaneously, ensuring VLANs and SSIDs are properly mapped across all APs.
+Deploys both network and wireless configurations simultaneously, ensuring VLANs and SSIDs are properly mapped across all APs. Does both `deploy-networks.sh` and `deploy-wireless.sh`.
 
 ## ✨ Key Features
 
+- **📡 Easy AP Management**: Deploy configurations to multiple OpenWRT access points simultaneously
 - **🎯 VLAN-Segregated WiFi Networks**: Configure access points as dumb APs with VLAN-mapped SSIDs
-- **📡 Unified AP Management**: Deploy configurations to multiple OpenWRT access points simultaneously
-- **🔧 Hardware-Aware Configuration**: Automatic detection and optimization for different AP models
-- **⚙️ Three-Layer Override System**: Global defaults → Common overrides → AP-specific customizations
-- **🚀 One-Command Deployment**: Deploy complete infrastructure with a single command
 - **🔄 Coordinated Network & Wireless**: Ensures VLANs and SSIDs are properly mapped across all APs
-- **🛡️ SSH Key Authentication**: Secure deployment using SSH keys
+- **🔧 Hardware-Aware Configuration**: Optional optimizations for different AP models
+- **⚙️ Three-Layer Override System**: Global defaults → Common overrides → AP-specific customizations
 - **🏠 Location-Specific Optimization**: Per-AP settings for different environments and hardware
 
 ## 🚀 Quick Start
 
 ### Complete Setup Workflow
 
-1. **Design your network**: Plan VLANs and SSIDs for network segmentation
-2. **Configure access points**: Set up AP-specific settings (IP, location, radio optimization)
+1. **Define your network**: VLAN definition in `network-configs/vlan_XX.conf`, wifi configuration in `wireless-configs/ssid_vlanXX.conf`
+2. **Configure access points**: Set up AP-specific settings (IP, name, location, optionally static IP, radio channel and optimizations, and other customizations) in `aps/ap-<location>.conf`
 3. **Deploy everything**: Use one command to configure all APs
 
 ```bash
 # Deploy complete infrastructure to all access points
 ./deploy-complete.sh aps/*.conf
-```
-
-### Single Command Example
-
-```bash
-# Deploy to specific access points with verbose output
-./deploy-complete.sh -v aps/ap-livingroom.conf aps/ap-office.conf
-
-# Test configuration without applying changes
-./deploy-complete.sh -d aps/*.conf
 ```
 
 ### Command Line Parameters
@@ -70,6 +62,94 @@ Deploys both network and wireless configurations simultaneously, ensuring VLANs 
 |-----------|-------|-------------|
 | `--networks-only` | `-n` | Deploy only network configurations (skip wireless) |
 | `--wireless-only` | `-w` | Deploy only wireless configurations (skip networks) |
+
+
+## 📋 Configuration Examples
+
+### Access Point Configuration
+```bash
+# aps/ap-livingroom.conf
+#!/bin/sh
+# Living room access point configuration
+
+# Access Point identification
+AP_IP="192.168.1.101"
+AP_NAME="ap-livingroom"
+AP_LOCATION="livingroom"
+
+# Refer to /etc/board.json or LuCI web interface to find out
+UPLINK_PORT="1"  # Uplink on port 1 for this AP
+CPU_PORT="0"
+
+# ===========================================
+# WIRELESS OVERRIDES
+# ===========================================
+
+# Location-optimized radio settings
+RADIO_OVERRIDE_radio0_channel="36"      # 5GHz - Channel 36
+RADIO_OVERRIDE_radio1_channel="1"       # 2.4GHz - Channel 1
+
+# Higher power for large living room coverage
+RADIO_OVERRIDE_radio0_txpower="20"      # 5GHz
+RADIO_OVERRIDE_radio1_txpower="22"      # 2.4GHz
+```
+
+### VLAN Configuration
+```bash
+# network-configs/vlan_10.conf
+VLAN_ID="10"
+VLAN_NAME="mgmt"
+VLAN_DESCRIPTION="Management Network"
+# This VLAN is tagged on uplink port (trunk port)
+# You can also override this per AP if it varies
+VLAN_UNTAGGED="0"
+VLAN_PROTO="dhcp"  # Access point gets IP on this VLAN
+
+# network-configs/vlan_20.conf
+VLAN_ID="20"
+VLAN_NAME="main"
+VLAN_DESCRIPTION="Main Network"
+VLAN_UNTAGGED="0" # VLAN is tagged on uplink port
+# No IP on this VLAN (default)
+```
+
+### SSID Configuration
+```bash
+# wireless-configs/ssid_vlan10_mgmt.conf
+SSID_NAME="Management-WiFi"
+SSID_KEY="secure-password-123"
+SSID_NETWORK="vlan10"  # mgmt = VLAN 10
+SSID_ENCRYPTION="sae"
+SSID_BANDS="5g" # Only on 5GHz band - Can override per AP if needed
+
+# wireless-configs/ssid_vlan20_mgmt.conf
+SSID_NAME="Main-WiFi"
+SSID_KEY="secure-password-123"
+SSID_NETWORK="vlan20"  # main = VLAN 20
+SSID_ENCRYPTION="sae"
+SSID_BANDS="2g 5g" # Both frequencies
+```
+
+### Common Hardware Optimizations and Settings
+```bash
+# wireless-configs/common-overrides.conf
+#!/bin/sh
+# Wireless settings applied to ALL access points
+
+# Good place to put default values for all AP's in this file
+
+# Country code for regulatory compliance
+COUNTRY_CODE="US"
+```
+
+```bash
+# network-configs/common-overrides.conf
+#!/bin/sh
+# Optional: Network settings applied to ALL access points
+
+# Defaults, settings/quirks based on AP model, ...
+# HARDWARE_MODEL=$(cat /tmp/sysinfo/model 2>/dev/null || echo "unknown")
+```
 
 ### Example Output
 
@@ -164,7 +244,7 @@ Deploys both network and wireless configurations simultaneously, ensuring VLANs 
 [SUCCESS] All deployments completed successfully!
 ```
 
-## 🏗️ System Architecture
+## 🏗️ File Structure
 
 ```
 openwrt/
@@ -183,7 +263,7 @@ openwrt/
 │   ├── ap-livingroom.conf             # Living room AP settings
 │   ├── ap-office.conf                 # Office AP settings
 │   └── ap-garage.conf                 # Garage AP settings
-├── openwrt-scripts/                   # Deployment scripts for OpenWRT
+├── openwrt-scripts/                   # Deployment scripts for OpenWRT - Runs on the APs
 │   ├── setup_networks.sh             # Network configuration script
 │   └── setup_wireless.sh             # Wireless configuration script
 ├── deploy-networks.sh                 # Deploy network configs to APs
@@ -193,205 +273,49 @@ openwrt/
 
 ## 🔧 How It Works
 
-### 1. Unified Three-Layer Configuration System
-
-The system uses a three-layer approach for maximum flexibility while minimizing configuration duplication:
-
-1. **Base Configuration Files**: Define VLANs (`vlan_*.conf`) and SSIDs (`ssid_*.conf`)
-2. **Common Overrides**: Settings applied to ALL access points (`common-overrides.conf` in both directories)
-3. **AP-Specific Overrides**: Individual access point customizations (in `aps/*.conf` files)
-
-### 2. Deployment Process
+### 1. Deployment Process
 
 1. **Network Deployment** (`deploy-networks.sh`):
-   - Loads VLAN definitions and common network overrides
+   - Clears current network configurations
+   - Loads base VLAN definitions and common network overrides from .conf files
    - Merges with AP-specific network settings
    - Configures switch ports, VLANs, and interfaces on each AP
 
 2. **Wireless Deployment** (`deploy-wireless.sh`):
-   - Loads SSID definitions and common wireless overrides
-   - Merges with AP-specific wireless settings
-   - Configures radios, wireless networks, and VLAN mapping on each AP
+   - Clears current wireless configurations
+   - Loads base SSID definitions and common wireless overrides from .conf files
+   - Merges with AP-specific settings
+   - Configures radios, wireless networks, and VLAN-SSID mapping on each AP
 
 3. **Complete Deployment** (`deploy-complete.sh`):
    - Runs network deployment first (VLANs must exist before wireless mapping)
    - Then runs wireless deployment
    - Ensures coordinated configuration across all APs
 
-### 3. Override Precedence (Both Systems)
+### 2. Override Precedence
 
 Settings are applied in this order (later overrides earlier):
 1. Base configuration files (`vlan_*.conf`, `ssid_*.conf`)
-2. Common overrides (`common-overrides.conf`)
-3. AP-specific overrides (variables in `aps/*.conf` files)
-
-### 4. Typical Workflow
-
-1. Define your network architecture (VLANs and SSIDs)
-2. Create base configuration files
-3. Set up common optimizations in override files
-4. Create AP-specific configurations
-5. Deploy with a single command
-
-## 📋 Configuration Examples
-
-### VLAN Configuration
-
-```bash
-# network-configs/vlan_10.conf
-VLAN_ID="10"
-VLAN_NAME="mgmt"
-VLAN_DESCRIPTION="Management Network"
-VLAN_UNTAGGED="0"  # Tagged on uplink
-VLAN_PROTO="dhcp"
-```
-
-### SSID Configuration
-
-```bash
-# wireless-configs/ssid_main.conf
-SSID_NAME="MyHome-WiFi"
-SSID_KEY="secure-password-123"
-SSID_NETWORK="mgmt"  # Maps to VLAN name (mgmt = VLAN 10)
-SSID_ENCRYPTION="sae"
-SSID_BANDS="2g 5g"
-```
-
-### Common Hardware Optimizations
-
-```bash
-# network-configs/common-overrides.conf
-#!/bin/sh
-# Network settings applied to ALL access points
-
-# Hardware detection for switch configuration
-HARDWARE_MODEL=$(cat /tmp/sysinfo/model 2>/dev/null || echo "unknown")
-
-case "$HARDWARE_MODEL" in
-    *"Ubiquiti UniFi AC Pro"*)
-        echo "[*] Applying Ubiquiti UniFi AC Pro port settings"
-        MAIN_IFACE="eth0"
-        UPLINK_PORT="2"
-        CPU_PORT="0"
-        ;;
-    *"Ubiquiti UniFi AC Lite"*)
-        echo "[*] Applying Ubiquiti UniFi AC Lite port settings"
-        # No switch on this device, no ports to configure
-        MAIN_IFACE="eth0"
-        ;;
-esac
+2. Common overrides (`common-overrides.conf`) **optional**
+3. AP-specific settings and overrides (variables in `aps/*.conf` files)
 
 ```
-
-```bash
-# wireless-configs/common-overrides.conf
-#!/bin/sh
-# Wireless settings applied to ALL access points
-
-# Country code for regulatory compliance
-COUNTRY_CODE="US"
+openwrt/
+├── network-configs/
+│   ├── common-overrides.conf       # Network settings applied to ALL access points
+│   └── vlan_*.conf                 # VLAN definitions
+├── wireless-configs/
+│   ├── common-overrides.conf       # Wireless settings applied to ALL access points
+│   └── ssid_*.conf                 # SSID definitions
+├── aps/
+│   ├── ap-main.conf                # AP-specific overrides (network + wireless)
+│   └── ap-bedroom.conf             # AP-specific overrides (network + wireless)
+├── deploy-networks.sh
+├── deploy-wireless.sh
+└── deploy-complete.sh
 ```
 
-### Unified Access Point Configuration
-
-```bash
-# aps/ap-livingroom.conf
-#!/bin/sh
-# Living room access point configuration
-
-# Access Point identification
-AP_IP="192.168.1.101"
-AP_NAME="ap-livingroom"
-AP_LOCATION="livingroom"
-
-# SSH connection settings
-SSH_USER="root"
-SSH_PORT="22"
-SSH_KEY="/home/user/.ssh/openwrt_key"
-
-# ===========================================
-# NETWORK OVERRIDES
-# ===========================================
-
-# Hardware-specific network settings
-UPLINK_PORT="4"  # Uplink on port 4 for this location
-
-# ===========================================
-# WIRELESS OVERRIDES
-# ===========================================
-
-# Location-optimized radio settings
-RADIO_OVERRIDE_radio0_channel="36"      # 5GHz - Channel 36
-RADIO_OVERRIDE_radio1_channel="1"       # 2.4GHz - Channel 1
-
-# Higher power for large living room coverage
-RADIO_OVERRIDE_radio0_txpower="20"      # 5GHz
-RADIO_OVERRIDE_radio1_txpower="22"      # 2.4GHz
-```
-
-## 🎯 Common Use Cases
-
-### Different Access Point Locations
-
-- **Living Room AP**: Higher power, optimal channels for main coverage
-- **Office AP**: Moderate power, channels avoiding interference
-- **Garage AP**: Lower power, weatherproof considerations
-
-### Hardware Variations
-
-- **TP-Link APs**: Specific switch port configurations
-- **Ubiquiti APs**: Different interface naming and capabilities
-- **Generic APs**: Conservative settings that work everywhere
-
-### Network Scenarios
-
-- **Home Network**: Management, trusted devices, guest, and IoT VLANs
-- **Small Office**: Departmental segmentation with guest access
-- **Multi-tenant**: Isolated networks per tenant or area
-
-## 🚀 Deployment Commands
-
-### Complete Deployment
-
-```bash
-# Deploy everything to all access points
-./deploy-complete.sh aps/*.conf
-
-# Deploy to specific access points
-./deploy-complete.sh aps/ap-livingroom.conf aps/ap-office.conf
-
-# Deploy with verbose output
-./deploy-complete.sh -v aps/*.conf
-
-# Test deployment without making changes
-./deploy-complete.sh -d aps/*.conf
-```
-
-### Partial deployment
-
-```bash
-# Deploy networks only (no wireless)
-./deploy-complete.sh -n aps/*.conf
-# Test network configuration only
-./deploy-networks.sh -d -v aps/ap-livingroom.conf
-
-# Deploy wireless only (networks must exist)
-./deploy-complete.sh -w aps/*.conf
-# Test wireless configuration only
-./deploy-wireless.sh -d -v aps/ap-livingroom.conf
-```
-
-### Maintenance Workflows
-
-```bash
-# Update wireless settings across all APs
-./deploy-wireless.sh aps/*.conf
-
-# Deploy to single AP for testing
-./deploy-complete.sh aps/ap-testlab.conf
-```
-
-### Backup and Restore
+## Backup and Restore
 
 ```bash
 # Create UCI backups manually
@@ -403,152 +327,13 @@ RADIO_OVERRIDE_radio1_txpower="22"      # 2.4GHz
 ./deploy-wireless.sh -b aps/ap-main.conf
 
 # Restore from backup (example)
-scp ap-main.20231215_143022.uciexport root@192.168.1.1:/tmp/
+scp -O ap-main.20231215_143022.uciexport root@192.168.1.1:/tmp/
 ssh root@192.168.1.1 "uci import < /tmp/ap-main.20231215_143022.uciexport && uci commit"
 ```
 
-Backup files are created as: `{AP_NAME}.{YYYYMMDD_HHMMSS}.uciexport`
+Backup files are created locally as: `{AP_NAME}.{YYYYMMDD_HHMMSS}.uciexport`
 
-## 🔑 Key Features Explained
+## 📚 More Examples
 
-### 🔧 Dual Common Overrides System
-
-- **Network Common Overrides**: VLAN configurations, switch settings, hardware detection
-- **Wireless Common Overrides**: Radio settings, country codes, power levels
-- Applied automatically to ALL access points, with AP-specific override capability
-
-### 📍 Unified Access Point-Specific Overrides
-
-- **Single Configuration File**: Each AP has one file containing both network and wireless overrides
-- **Deployment Coordination**: Both systems use the same AP configuration files
-- **Consistent Naming**: AP_IP, AP_NAME variables used by both deployment scripts
-
-### 🚀 Coordinated Deployment
-
-- **Proper Sequence**: Network deployment creates VLANs before wireless maps SSIDs to them
-- **Shared Configuration**: Both systems access the same AP configuration files
-- **Synchronized State**: Ensures VLANs and wireless networks are properly aligned
-
-### 🔄 Configuration Synchronization
-
-- **Atomic Operations**: Each deployment is all-or-nothing per access point
-- **Rollback Capability**: Failed deployments leave previous configuration intact
-- **Validation**: SSH connectivity tested before attempting configuration
-
-## 📚 Documentation
-
-- **[Common Overrides System](COMMON-OVERRIDES.md)**: Detailed guide to the three-layer configuration system
 - **[Example Usage](EXAMPLE-USAGE.md)**: Step-by-step examples and common scenarios
 - **Configuration Templates**: Example files in each directory showing proper syntax
-
-## 🚀 Quick Setup Guide
-
-### 1. Design Your Network Architecture
-
-Plan your VLAN segmentation and wireless networks:
-- Management VLAN (AP management)
-- Trusted devices (computers, phones)
-- Guest network (visitor access)
-- IoT devices (smart home, sensors)
-
-### 2. Create Your VLAN Definitions
-
-```bash
-# Create files in network-configs/ for each VLAN
-cp network-configs/vlan_10_management.conf.example network-configs/vlan_10_management.conf
-# Edit VLAN_ID, VLAN_NAME, and port configurations
-```
-
-### 3. Create Your SSID Definitions
-
-```bash
-# Create files in wireless-configs/ for each SSID
-cp wireless-configs/ssid_main.conf.example wireless-configs/ssid_main.conf
-# Edit SSID, VLAN_ID, encryption, and radio settings
-```
-
-### 4. Set Up Hardware Optimizations
-
-```bash
-# Edit common override files for your AP models
-vim network-configs/common-overrides.conf    # Network/switch settings
-vim wireless-configs/common-overrides.conf   # Radio/wireless settings
-```
-
-### 5. Create Access Point Configurations
-
-```bash
-# Create configuration file for each access point
-cp aps/ap-example.conf.example aps/ap-livingroom.conf
-# Edit AP_IP, AP_NAME, and location-specific settings
-```
-
-### 6. Test and Deploy
-
-```bash
-# Test configuration first
-./deploy-complete.sh -d aps/*.conf
-
-# Deploy to access points
-./deploy-complete.sh aps/*.conf
-```
-
-## 🔬 Advanced Features
-
-### SSH Key Authentication
-
-Configure SSH keys for secure, passwordless deployment:
-
-```bash
-# Generate SSH key for OpenWRT access
-ssh-keygen -t rsa -b 4096 -f ~/.ssh/openwrt_key
-
-# Add to access point configuration
-echo 'SSH_KEY="/home/user/.ssh/openwrt_key"' >> aps/ap-livingroom.conf
-```
-
-### Hardware Detection (Both Systems)
-
-Both network and wireless systems automatically detect hardware and apply optimizations:
-
-```bash
-# Network system detects:
-- Switch port configurations
-- Interface naming schemes
-- VLAN capabilities
-
-# Wireless system detects:
-- Radio capabilities
-- Antenna configurations
-- Power limitations
-- Channel restrictions
-```
-
-Example hardware-specific settings:
-
-```bash
-# In common-overrides.conf files
-case "$HARDWARE_MODEL" in
-    *"TP-Link Archer"*)
-        # TP-Link specific optimizations
-        RADIO_OVERRIDE_radio0_htmode="VHT80"
-        VLAN_PORT_CONFIG="switch0"
-        ;;
-    *"Ubiquiti"*)
-        # Ubiquiti specific optimizations
-        RADIO_OVERRIDE_radio0_txpower="23"
-        MAIN_IFACE="eth0"
-        ;;
-esac
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Test your changes with `-d` (dry run) mode
-4. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
