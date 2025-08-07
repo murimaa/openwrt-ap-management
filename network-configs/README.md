@@ -1,12 +1,12 @@
 # OpenWRT Network Configuration System
 
-This directory contains the network configuration system for OpenWRT routers, focused on VLAN setup, switch configuration, and network segmentation.
+This directory contains the network configuration system for OpenWRT access points, focused on VLAN setup, switch configuration, and network segmentation.
 
 ## 📁 Directory Structure
 
 ```
 network-configs/
-├── common-overrides.conf      # Hardware-specific settings applied to ALL routers
+├── common-overrides.conf      # Hardware-specific settings applied to ALL access points
 ├── vlan_10.conf              # Management VLAN definition
 ├── vlan_20.conf              # Guest VLAN definition
 ├── vlan_30.conf              # IoT VLAN definition
@@ -32,7 +32,7 @@ VLAN_PROTO="dhcp"               # dhcp, static, or none
 
 ### 2. Common Hardware Overrides (`common-overrides.conf`)
 
-Hardware-specific network settings applied to ALL routers:
+Hardware-specific network settings applied to ALL access points:
 
 ```bash
 #!/bin/sh
@@ -57,12 +57,12 @@ case "$HARDWARE_MODEL" in
 esac
 ```
 
-### 3. Router-Specific Overrides
+### 3. Access Point-Specific Overrides
 
-Added to individual router configuration files in `routers/`:
+Added to individual access point configuration files in `aps/`:
 
 ```bash
-# In routers/bedroom-router.conf
+# In aps/ap-bedroom.conf
 VLAN_OVERRIDE_20_disabled="1"            # Disable guest VLAN
 VLAN_OVERRIDE_30_proto="static"          # Use static IP for IoT VLAN
 VLAN_OVERRIDE_30_ipaddr="192.168.30.1"
@@ -94,11 +94,11 @@ VLAN_OVERRIDE_30_netmask="255.255.255.0"
 | `UPLINK_PORT` | Switch uplink port | 0-6 |
 | `CPU_PORT` | Switch CPU port | 0-6 |
 
-### Router-Specific Override Variables
+### Access Point Specific Override Variables
 
 | Variable Pattern | Description | Example |
 |------------------|-------------|---------|
-| `VLAN_OVERRIDE_<ID>_disabled` | Disable VLAN on this router | `VLAN_OVERRIDE_20_disabled="1"` |
+| `VLAN_OVERRIDE_<ID>_disabled` | Disable VLAN on this AP | `VLAN_OVERRIDE_20_disabled="1"` |
 | `VLAN_OVERRIDE_<ID>_proto` | Override protocol | `VLAN_OVERRIDE_10_proto="static"` |
 | `VLAN_OVERRIDE_<ID>_ipaddr` | Override IP address | `VLAN_OVERRIDE_10_ipaddr="192.168.10.1"` |
 
@@ -144,8 +144,8 @@ VLAN_DESCRIPTION="Server Network"
 VLAN_UNTAGGED="0"
 VLAN_PROTO="static"             # Static configuration
 # -> Don't do this: VLAN_IPADDR="192.168.40.10"
-#    It would define the same IP address for all routers
-# -> Instead, in routers/router.conf file: VLAN_OVERRIDE_40_ipaddr="192.168.40.1"
+#    It would define the same IP address for all access points
+# -> Instead, in aps/ap.conf file: VLAN_OVERRIDE_40_ipaddr="192.168.40.1"
 VLAN_NETMASK="255.255.255.0"
 VLAN_GATEWAY="192.168.40.1"
 VLAN_DNS="8.8.8.8 8.8.4.4"
@@ -200,11 +200,11 @@ esac
 
 ## 📍 Location-Specific Configurations
 
-### Main Router (Full Configuration)
+### Main Access Point (Full Configuration)
 ```bash
-# routers/main-router.conf
-ROUTER_IP="192.168.1.1"
-ROUTER_NAME="main-router"
+# aps/ap-main.conf
+AP_IP="192.168.1.10"
+AP_NAME="ap-main"
 
 VLAN_OVERRIDE_10_proto="static"
 VLAN_OVERRIDE_10_ipaddr="192.168.10.1"
@@ -215,9 +215,9 @@ VLAN_OVERRIDE_20_extra="multicast_querier=1"
 
 ### Access Point (Limited Configuration)
 ```bash
-# routers/bedroom-ap.conf
-ROUTER_IP="192.168.1.32"
-ROUTER_NAME="bedroom-ap"
+# aps/ap-bedroom.conf
+AP_IP="192.168.1.32"
+AP_NAME="ap-bedroom"
 
 # Disable guest network in bedroom
 VLAN_OVERRIDE_20_disabled="1"
@@ -231,9 +231,9 @@ VLAN_OVERRIDE_10_proto="dhcp"
 
 ### Garage/Industrial (Minimal Configuration)
 ```bash
-# routers/garage-ap.conf
-ROUTER_IP="192.168.1.33"
-ROUTER_NAME="garage-ap"
+# aps/ap-garage.conf
+AP_IP="192.168.1.33"
+AP_NAME="ap-garage"
 
 # Only management and IoT networks
 VLAN_OVERRIDE_20_disabled="1"   # No guest network
@@ -257,13 +257,13 @@ SSID_NETWORK="mgmt"     # Maps SSID to "mgmt" interface
 ### Coordinated Deployment
 ```bash
 # Deploy networks first (creates VLANs and interfaces)
-./deploy-networks.sh routers/main-router.conf
+./deploy-networks.sh aps/ap-main.conf
 
 # Deploy wireless second (maps SSIDs to VLANs)
-./deploy-wireless.sh routers/main-router.conf
+./deploy-wireless.sh aps/ap-main.conf
 
 # Or use unified deployment
-./deploy-complete.sh routers/main-router.conf
+./deploy-complete.sh aps/ap-main.conf
 ```
 
 ## 🐛 Troubleshooting
@@ -273,25 +273,25 @@ SSID_NETWORK="mgmt"     # Maps SSID to "mgmt" interface
 **1. VLAN not appearing in wireless system:**
 ```bash
 # Check VLAN interface was created
-ssh root@router "uci show network | grep mgmt"
+ssh root@ap "uci show network | grep mgmt"
 
 # Check SSID is mapping to correct interface
-ssh root@router "uci show wireless | grep network"
+ssh root@ap "uci show wireless | grep network"
 ```
 
 **2. Switch ports not configured correctly:**
 ```bash
 # Check switch VLAN configuration
-ssh root@router "uci show network | grep switch_vlan"
+ssh root@ap "uci show network | grep switch_vlan"
 
 # Verify hardware detection
-ssh root@router "cat /tmp/sysinfo/model"
+ssh root@ap "cat /tmp/sysinfo/model"
 ```
 
 **3. Override not taking effect:**
 ```bash
 # Check override file was created correctly
-ssh root@router "cat /tmp/network-config-*/network-configs/router-overrides.conf"
+ssh root@ap "cat /tmp/network-config-*/network-configs/common-overrides.conf"
 
 # Verify override syntax (no spaces around =)
 VLAN_OVERRIDE_20_disabled="1"  # Correct
@@ -302,13 +302,13 @@ VLAN_OVERRIDE_20_disabled = "1"  # Wrong
 
 ```bash
 # Check what VLANs are configured
-ssh root@router "uci show network | grep -E '(switch_vlan|interface)'"
+ssh root@ap "uci show network | grep -E '(switch_vlan|interface)'"
 
 # Check bridge configuration
-ssh root@router "uci show network | grep device"
+ssh root@ap "uci show network | grep device"
 
 # Check applied configuration after deployment
-ssh root@router "uci export network"
+ssh root@ap "uci export network"
 ```
 
 ### Validation
@@ -339,7 +339,7 @@ ip link show | grep br-
 - **Test on target hardware**: Verify switch configuration works correctly
 
 ### 4. Security Considerations
-- **Firewall is disabled**: Restrict access to router management on VLAN level
+- **Firewall is disabled**: Restrict access to access point management on VLAN level
 - **Limit management access**: Enable ip address only for management VLAN: VLAN_PROTO="none" for others
 
 

@@ -1,204 +1,224 @@
-# OpenWRT Unified Network & Wireless Management
+# OpenWRT WiFi Access Point Network & Wireless Management
 
-Deploy and maintain both VLAN network configurations and wireless configurations across multiple wifi routers with a unified approach.
-
-Use case: Setup OpenWRT devices as managed access points with VLAN segmentation and corresponding wireless networks, perfect for creating segmented networks (main, guest, IoT, etc.). OpenWRT devices are used as "dumb" Wifi APs, with an IP address on management VLAN only.
+Use case: You already have a network with VLANS and you want to setup/manage wifi SSIDs for those VLANS. Use this tool to provision OpenWRT devices as wifi access points with VLAN segmentation and corresponding wireless networks, perfect for creating segmented wifi networks (main, guest, IoT, etc.). You will end up with "dumb" APs, with an IP address on management VLAN only.
 
 Designed to be used on fresh OpenWRT installations - **IF YOU HAVE EXISTING CONFIGURATIONS, PROCEED WITH CAUTION!** Please backup your current configuration.
 
-Both systems are designed to be **idempotent** - you can run them multiple times to update configurations.
-
-**Recommend setting up SSH keys beforehand for passwordless deployment.**
-
 ## 🏗️ Unified Architecture
 
-This system provides two complementary deployment tools:
+This system provides automated deployment and management of **VLAN-segregated WiFi Access Points** running OpenWRT. It's designed for managing dumb APs that provide wireless access to segmented networks, not full routing functionality.
 
 ### 1. **Network Deployment** (`deploy-networks.sh`)
-- 🌐 **VLAN Configuration** - Configure network segmentation and routing
-- 🔀 **Switch Management** - Hardware switch VLAN tagging and port configuration
-- 🚪 **Interface Management** - Bridge and interface configuration
+
+Configures VLAN network segmentation on OpenWRT access points, setting up trunk ports and VLAN interfaces for network isolation.
 
 ### 2. **Wireless Deployment** (`deploy-wireless.sh`)
-- 📡 **WiFi Networks** - Configure SSIDs mapped to VLANs
-- 🎛️ **Radio Optimization** - Hardware-specific radio settings
-- 🔐 **Security Settings** - WPA3/SAE, fast roaming, hidden networks
-- 📍 **Location-Specific** - Different SSIDs per AP location
+
+Deploys wireless networks (SSIDs) mapped to specific VLANs, creating segmented WiFi networks on your access points.
 
 ## ✨ Key Features
 
-- 🏠 **Shared Definitions** - Define VLANs and SSIDs once, deploy everywhere
-- 🔧 **Hardware-Specific Optimizations** - Automatic settings based on router model
-- 📍 **Router-Specific Customization** - Override settings per router location/purpose
-- 🚀 **Automated Deployment** - Deploy to single or multiple routers with one command
-- 📦 **Maintainable** - Run multiple times to update configurations
-- 🔐 **SSH Key Support** - Secure passwordless deployment
-- 🧪 **Dry Run Testing** - Test configurations before applying
-- 📊 **Verbose Logging** - Detailed deployment information
-- 🔄 **Unified Router Configs** - Single router config file for both systems
+- **🎯 VLAN-Segregated WiFi Networks**: Configure access points as dumb APs with VLAN-mapped SSIDs
+- **📡 Unified AP Management**: Deploy configurations to multiple OpenWRT access points simultaneously
+- **🔧 Hardware-Aware Configuration**: Automatic detection and optimization for different AP models
+- **⚙️ Three-Layer Override System**: Global defaults → Common overrides → AP-specific customizations
+- **🚀 One-Command Deployment**: Deploy complete infrastructure with a single command
+- **🔄 Coordinated Network & Wireless**: Ensures VLANs and SSIDs are properly mapped across all APs
+- **🛡️ SSH Key Authentication**: Secure deployment using SSH keys
+- **🏠 Location-Specific Optimization**: Per-AP settings for different environments and hardware
 
 ## 🚀 Quick Start
 
 ### Complete Setup Workflow
 
-1. **Configure your VLANs** in `network-configs/vlan_*.conf`
-2. **Configure your SSIDs** in `wireless-configs/ssid_*.conf`
-3. **Create router configs** in `routers/router-name.conf`
-4. **Deploy networks**: `./deploy-networks.sh routers/router-name.conf`
-5. **Deploy wireless**: `./deploy-wireless.sh routers/router-name.conf`
+1. **Design your network**: Plan VLANs and SSIDs for network segmentation
+2. **Configure access points**: Set up AP-specific settings (IP, location, radio optimization)
+3. **Deploy everything**: Use one command to configure all APs
+
+```bash
+# Deploy complete infrastructure to all access points
+./deploy-complete.sh aps/*.conf
+```
 
 ### Single Command Example
-```bash
-# Deploy both network and wireless to a router
-./deploy-networks.sh routers/ap-bedroom.conf
-./deploy-wireless.sh routers/ap-bedroom.conf
 
-# Or deploy to multiple routers
-./deploy-networks.sh routers/*.conf
-./deploy-wireless.sh routers/*.conf
+```bash
+# Deploy to specific access points with verbose output
+./deploy-complete.sh -v aps/ap-livingroom.conf aps/ap-office.conf
+
+# Test configuration without applying changes
+./deploy-complete.sh -d aps/*.conf
 ```
 
 ### Example Output
 
-**Network Deployment:**
-```bash
-./deploy-networks.sh routers/ap-bedroom.conf
+```
+./deploy-complete.sh aps/ap-bedroom.conf
+[INFO] Mode: Complete Infrastructure (Networks + Wireless)
+[INFO] OpenWRT Complete Infrastructure Deployment
+[INFO] Deploying to 1 access point(s): ap-bedroom.conf
+[STAGE] Starting Network Deployment Phase
 [INFO] OpenWRT Network Configuration Deployment
-[INFO] Starting deployment to 1 router(s)...
-[INFO] Processing router config: routers/ap-bedroom.conf
-[INFO] Deploying to ap-bedroom (192.168.1.32:22)...
+[INFO] Starting deployment to 1 access point(s)...
+[INFO] Processing access point config: aps/ap-bedroom.conf
+[INFO] Deploying to ap-bedroom (192.168.1.30:22)...
 [INFO] Copying network setup script...
 [INFO] Copying configuration files...
-[INFO] Creating router-specific overrides...
+[INFO] Creating access point-specific overrides...
 [INFO] Executing setup script...
-[192.168.1.32] [INFO] Loading router-specific overrides: ./network-configs/router-overrides.conf
-[192.168.1.32] [INFO] Backing up current config...
-[192.168.1.32] [INFO] Cleaning up existing VLANs from switch config...
-[192.168.1.32] [INFO] Removing network.@switch_vlan[2]...
-[192.168.1.32] [INFO] Removing network.@switch_vlan[1]...
-[192.168.1.32] [INFO] Removing network.@switch_vlan[0]...
-[192.168.1.32] [INFO] Cleaning up old VLAN-related config...
-[192.168.1.32] [INFO] Switch detected — configuring VLAN on switch0...
-[192.168.1.32] [INFO] Processing VLAN configurations...
-[192.168.1.32] [INFO] Loading config: ./network-configs/vlan_10.conf
-[192.168.1.32] [SUCCESS] Configuring VLAN 10 (mgmt)...
-[192.168.1.32] [SUCCESS] Adding VLAN 10 tagged to port 1
-[192.168.1.32] [INFO] Loading config: ./network-configs/vlan_30.conf
-[192.168.1.32] [SUCCESS] Configuring VLAN 30 (iot)...
-[192.168.1.32] [SUCCESS] Adding VLAN 30 tagged to port 1
-[192.168.1.32] [INFO] Disabling firewall, dnsmasq, odhcpd...
-[192.168.1.32] [INFO] Applying configuration...
-[192.168.1.32] [SUCCESS] Done.
-[SUCCESS] Configuration applied successfully on ap-bedroom (192.168.1.32)
-```
+[ap-bedroom] [INFO] Loading access point-specific overrides: ./network-configs/common-overrides.conf
+[ap-bedroom] [*] Hardware detected: ASUS RT-AC1200 V2
+[ap-bedroom] [*] Applying ASUS RT-AC1200 V2 port settings
+[ap-bedroom] [INFO] Backing up current config...
+[ap-bedroom] [INFO] Cleaning up existing VLANs from switch config...
+[ap-bedroom] [INFO] Cleaning up old VLAN-related config...
+[ap-bedroom] [INFO] Switch detected — configuring VLAN on switch0...
+[ap-bedroom] [INFO] Processing VLAN configurations...
+[ap-bedroom] [INFO] Loading config: ./network-configs/vlan_10.conf
+[ap-bedroom] [INFO] Configuring VLAN 10 (mgmt)...
+[ap-bedroom] [INFO] Adding VLAN 10 untagged to port 1
+[ap-bedroom] [INFO] Loading config: ./network-configs/vlan_20.conf
+[ap-bedroom] [INFO] Configuring VLAN 20 (guest)...
+[ap-bedroom] [INFO] Adding VLAN 50 tagged to port 1
+[ap-bedroom] [INFO] Loading config: ./network-configs/vlan_30.conf
+[ap-bedroom] [INFO] Configuring VLAN 30 (iot)...
+[ap-bedroom] [INFO] Adding VLAN 30 tagged to port 1
+[ap-bedroom] [INFO] Disabling firewall, dnsmasq, odhcpd...
+[ap-bedroom] [INFO] Applying configuration...
+[ap-bedroom] [SUCCESS] Done.
+[SUCCESS] Configuration applied successfully on ap-bedroom (192.168.1.30)
 
-**Wireless Deployment:**
-```bash
-./deploy-wireless.sh routers/ap-bedroom.conf
+[INFO] Deployment Summary:
+[SUCCESS] Successful deployments: 1/1
+[SUCCESS] All deployments completed successfully!
+[SUCCESS] Network deployment completed successfully
+
+[STAGE] Starting Wireless Deployment Phase
 [INFO] OpenWRT Wireless Configuration Deployment
-[INFO] Starting deployment to 1 router(s)...
-[INFO] Processing router config: routers/ap-bedroom.conf
-[INFO] Deploying to ap-bedroom (192.168.1.32:22)...
+[INFO] Starting deployment to 1 access point(s)...
+[INFO] Processing access point config: aps/ap-bedroom.conf
+[INFO] Deploying to ap-bedroom (192.168.1.30:22)...
+[INFO] [DRY RUN] Would copy configuration files to 192.168.1.30
+[INFO] [DRY RUN] Would create access point overrides with       62 lines
+[INFO] [DRY RUN] Would execute setup script on 192.168.1.30
 [INFO] Copying wireless setup script...
 [INFO] Copying configuration files...
-[INFO] Creating router-specific overrides...
+[INFO] Creating access point-specific overrides...
 [INFO] Executing setup script...
-[192.168.1.32] [INFO] Loading router-specific overrides: ./wireless-configs/router-overrides.conf
-[192.168.1.32] [INFO] Cleaning up existing wireless interfaces...
-[192.168.1.32] [INFO] Loading config: ./wireless-configs/ssid_main.conf
-[192.168.1.32] [WARNING] Skipping SSID 'MainWifi' on 2g (radio0) - not in specified bands: 5g
-[192.168.1.32] [SUCCESS] Applying SSID 'MainWifi' to 5g on radio1...
-[192.168.1.32] [INFO] Loading config: ./wireless-configs/ssid_iot.conf
-[192.168.1.32] [SUCCESS] Applying SSID 'IotWifi' to 2g on radio0...
-[192.168.1.32] [SUCCESS] Applying SSID 'IotWifi' to 5g on radio1...
-[192.168.1.32] [INFO] Enabling radios...
-[192.168.1.32] [INFO] Committing wireless config and reloading...
-[192.168.1.32] [SUCCESS] Done.
-[SUCCESS] Configuration applied successfully on ap-bedroom (192.168.1.32)
+[ap-bedroom] [INFO] Loading access point-specific overrides: ./wireless-configs/common-overrides.conf
+[ap-bedroom] [INFO] Cleaning up existing wireless interfaces...
+[ap-bedroom] [INFO] Loading config: ./wireless-configs/ssid_vlan10.conf
+[ap-bedroom] [INFO] Applying SSID 'MgmtWifi' to 2g on radio0...
+[ap-bedroom] [INFO] Applying SSID 'MgmtWifi' to 5g on radio1...
+[ap-bedroom] [INFO] Loading config: ./wireless-configs/ssid_vlan20.conf
+[ap-bedroom] [INFO] Applying SSID 'GuestWifi' to 2g on radio0...
+[ap-bedroom] [INFO] Applying SSID 'GuestWifi' to 5g on radio1...
+[ap-bedroom] [INFO] Loading config: ./wireless-configs/ssid_vlan30.conf
+[ap-bedroom] [INFO] Applying SSID 'IoT' to 2g on radio0...
+[ap-bedroom] [WARNING] Skipping SSID 'IoT' on 5g (radio1) - not in specified bands: 2g
+[ap-bedroom] [INFO] Enabling radios...
+[ap-bedroom] [INFO] Committing wireless config and reloading...
+[ap-bedroom] [SUCCESS] Done.
+[SUCCESS] Configuration applied successfully on ap-bedroom (192.168.1.30)
+
+[INFO] Deployment Summary:
+[SUCCESS] Successful deployments: 1/1
+[SUCCESS] All deployments completed successfully!
+[SUCCESS] Wireless deployment completed successfully
+
+[INFO] Complete Deployment Summary:
+[SUCCESS] ✓ Network deployment: SUCCESS
+[SUCCESS] ✓ Wireless deployment: SUCCESS
+[SUCCESS] 🎉 Complete infrastructure deployment successful!
+
+[INFO] Your OpenWRT access points are now configured with:
+[INFO]   • VLAN network segmentation
+[INFO]   • Wireless networks mapped to VLANs
+[INFO]   • Optimized radio settings
+
+[INFO] Next steps:
+[INFO]   • Verify connectivity to each VLAN/SSID
+[INFO]   • Monitor access point performance and adjust as needed
+[INFO]   • Test client connectivity across network segments
+
+[INFO] Deployment Summary:
+[SUCCESS] Successful deployments: 3/3
+[SUCCESS] All deployments completed successfully!
 ```
 
 ## 🏗️ System Architecture
 
 ```
 openwrt/
-├── openwrt-scripts/
-│   ├── setup_networks.sh          # Network setup script (runs on router)
-│   └── setup_wireless.sh          # Wireless setup script (runs on router)
-├── network-configs/
-│   ├── common-overrides.conf      # Hardware-specific network settings for ALL routers
-│   ├── vlan_10.conf              # Management VLAN definition
-│   ├── vlan_20.conf              # Guest VLAN definition
-│   ├── vlan_30.conf              # IoT VLAN definition
-│   └── vlan_*.conf               # Additional VLAN definitions
-├── wireless-configs/
-│   ├── common-overrides.conf      # Hardware-specific wireless settings for ALL routers
-│   ├── ssid_main.conf            # Main WiFi network definition
-│   ├── ssid_guest.conf           # Guest WiFi network definition
-│   ├── ssid_iot.conf             # IoT WiFi network definition
-│   └── ssid_*.conf               # Additional SSID definitions
-├── routers/
-│   ├── main-router.conf          # Main router: IP + network + wireless overrides
-│   ├── bedroom-router.conf       # Bedroom router: IP + specific overrides
-│   └── office-router.conf        # Office router: IP + specific overrides
-├── deploy-networks.sh            # Network deployment script
-├── deploy-wireless.sh            # Wireless deployment script
-└── README.md                     # This comprehensive guide
+├── network-configs/                    # VLAN network definitions
+│   ├── common-overrides.conf          # Network settings for ALL access points
+│   ├── vlan_10_management.conf        # Management VLAN
+│   ├── vlan_20_trusted.conf           # Trusted devices VLAN
+│   ├── vlan_30_guest.conf             # Guest network VLAN
+│   └── vlan_40_iot.conf               # IoT devices VLAN
+├── wireless-configs/                   # Wireless network definitions
+│   ├── common-overrides.conf          # Wireless settings for ALL access points
+│   ├── ssid_main.conf                 # Primary network SSID
+│   ├── ssid_guest.conf                # Guest network SSID
+│   └── ssid_iot.conf                  # IoT network SSID
+├── aps/                               # Access point configurations
+│   ├── ap-livingroom.conf             # Living room AP settings
+│   ├── ap-office.conf                 # Office AP settings
+│   └── ap-garage.conf                 # Garage AP settings
+├── openwrt-scripts/                   # Deployment scripts for OpenWRT
+│   ├── setup_networks.sh             # Network configuration script
+│   └── setup_wireless.sh             # Wireless configuration script
+├── deploy-networks.sh                 # Deploy network configs to APs
+├── deploy-wireless.sh                 # Deploy wireless configs to APs
+└── deploy-complete.sh                 # Deploy both networks + wireless
 ```
 
 ## 🔧 How It Works
 
 ### 1. Unified Three-Layer Configuration System
 
-Both network and wireless systems use the same configuration architecture:
+The system uses a three-layer approach for maximum flexibility while minimizing configuration duplication:
 
-1. **Shared Configs** - Base VLAN/SSID definitions
-2. **Common Overrides** - Hardware-specific optimizations applied to ALL routers
-3. **Router-Specific Configs** - Router connection details + location-specific overrides
+1. **Base Configuration Files**: Define VLANs (`vlan_*.conf`) and SSIDs (`ssid_*.conf`)
+2. **Common Overrides**: Settings applied to ALL access points (`common-overrides.conf` in both directories)
+3. **AP-Specific Overrides**: Individual access point customizations (in `aps/*.conf` files)
 
 ### 2. Deployment Process
 
-**Network Deployment:**
-```bash
-./deploy-networks.sh routers/bedroom-router.conf
-```
+1. **Network Deployment** (`deploy-networks.sh`):
+   - Loads VLAN definitions and common network overrides
+   - Merges with AP-specific network settings
+   - Configures switch ports, VLANs, and interfaces on each AP
 
-1. Reads router config for IP/SSH details
-2. Combines common network overrides + router-specific network overrides
-3. Copies network setup script and VLAN configs to router
-4. Clears existing VLAN/switch configuration on router
-5. Executes new network configuration (VLANs, bridges)
-6. Disables firewall, dnsmasq, odhcpd (not needed for dumb AP)
+2. **Wireless Deployment** (`deploy-wireless.sh`):
+   - Loads SSID definitions and common wireless overrides
+   - Merges with AP-specific wireless settings
+   - Configures radios, wireless networks, and VLAN mapping on each AP
 
-**Wireless Deployment:**
-```bash
-./deploy-wireless.sh routers/bedroom-router.conf
-```
-
-1. Uses same router config for IP/SSH details
-2. Combines common wireless overrides + router-specific wireless overrides
-3. Copies wireless setup script and SSID configs to router
-4. Clears existing wireless configuration on router
-5. Executes new wireless configuration (SSIDs, radio settings)
+3. **Complete Deployment** (`deploy-complete.sh`):
+   - Runs network deployment first (VLANs must exist before wireless mapping)
+   - Then runs wireless deployment
+   - Ensures coordinated configuration across all APs
 
 ### 3. Override Precedence (Both Systems)
 
-```
-Common Overrides → Router-Specific Overrides → Final Configuration
-    (All routers)      (Individual router)         (Applied)
-```
+Settings are applied in this order (later overrides earlier):
+1. Base configuration files (`vlan_*.conf`, `ssid_*.conf`)
+2. Common overrides (`common-overrides.conf`)
+3. AP-specific overrides (variables in `aps/*.conf` files)
 
 ### 4. Typical Workflow
 
-1. **Design your network** - Define VLANs and corresponding SSIDs
-2. **Configure hardware optimizations** - Set common overrides for your router models
-3. **Create router-specific configs** - Set IP addresses and location-specific overrides
-4. **Deploy networks first** - Establish VLAN infrastructure
-5. **Deploy wireless second** - Configure WiFi networks on top of VLANs
-6. **Maintain** - Update configs and redeploy as needed
+1. Define your network architecture (VLANs and SSIDs)
+2. Create base configuration files
+3. Set up common optimizations in override files
+4. Create AP-specific configurations
+5. Deploy with a single command
 
 ## 📋 Configuration Examples
 
 ### VLAN Configuration
+
 ```bash
 # network-configs/vlan_10.conf
 VLAN_ID="10"
@@ -209,6 +229,7 @@ VLAN_PROTO="dhcp"
 ```
 
 ### SSID Configuration
+
 ```bash
 # wireless-configs/ssid_main.conf
 SSID_NAME="MyHome-WiFi"
@@ -220,258 +241,283 @@ SSID_BANDS="2g 5g"
 
 ### Common Hardware Optimizations
 
-**Network:**
 ```bash
 # network-configs/common-overrides.conf
+#!/bin/sh
+# Network settings applied to ALL access points
+
+# Hardware detection for switch configuration
 HARDWARE_MODEL=$(cat /tmp/sysinfo/model 2>/dev/null || echo "unknown")
 
 case "$HARDWARE_MODEL" in
-    *"Archer C7"*)
-        MAIN_IFACE="eth1"
-        UPLINK_PORT="1"
+    *"Ubiquiti UniFi AC Pro"*)
+        echo "[*] Applying Ubiquiti UniFi AC Pro port settings"
+        MAIN_IFACE="eth0"
+        UPLINK_PORT="2"
         CPU_PORT="0"
         ;;
-    *"Archer A7"*)
+    *"Ubiquiti UniFi AC Lite"*)
+        echo "[*] Applying Ubiquiti UniFi AC Lite port settings"
+        # No switch on this device, no ports to configure
         MAIN_IFACE="eth0"
-        UPLINK_PORT="0"
-        CPU_PORT="6"
         ;;
 esac
+
 ```
 
-**Wireless:**
 ```bash
 # wireless-configs/common-overrides.conf
-COUNTRY_CODE="FI"  # Set if required
+#!/bin/sh
+# Wireless settings applied to ALL access points
 
-case "$HARDWARE_MODEL" in
-    *"Archer C7"*)
-        RADIO_OVERRIDE_radio0_txpower="17"  # 5GHz
-        RADIO_OVERRIDE_radio1_txpower="20"  # 2.4GHz
-        ;;
-    *"Netgear"*)
-        RADIO_OVERRIDE_radio0_txpower="18"
-        RADIO_OVERRIDE_radio1_txpower="21"
-        ;;
-esac
+# Country code for regulatory compliance
+COUNTRY_CODE="US"
 ```
 
-### Unified Router Configuration
+### Unified Access Point Configuration
+
 ```bash
-# routers/bedroom-router.conf
-ROUTER_IP="192.168.1.32"  # mandatory
-ROUTER_NAME="bedroom-router"
+# aps/ap-livingroom.conf
+#!/bin/sh
+# Living room access point configuration
+
+# Access Point identification
+AP_IP="192.168.1.101"
+AP_NAME="ap-livingroom"
+AP_LOCATION="livingroom"
+
+# SSH connection settings
 SSH_USER="root"
 SSH_PORT="22"
+SSH_KEY="/home/user/.ssh/openwrt_key"
 
-# Network-specific overrides
-UPLINK_PORT="0"                          # Override hardware defaults
-VLAN_OVERRIDE_20_disabled="1"            # No guest VLAN in bedroom
+# ===========================================
+# NETWORK OVERRIDES
+# ===========================================
 
-# Wireless-specific overrides
-RADIO_OVERRIDE_radio0_channel="149"      # 5GHz - avoid interference
-RADIO_OVERRIDE_radio1_channel="1"        # 2.4GHz
-SSID_OVERRIDE_guest_disabled="1"         # No guest WiFi in bedroom
-SSID_OVERRIDE_iot_bands="2g"             # IoT on 2.4GHz only
+# Hardware-specific network settings
+UPLINK_PORT="4"  # Uplink on port 4 for this location
+
+# ===========================================
+# WIRELESS OVERRIDES
+# ===========================================
+
+# Location-optimized radio settings
+RADIO_OVERRIDE_radio0_channel="36"      # 5GHz - Channel 36
+RADIO_OVERRIDE_radio1_channel="1"       # 2.4GHz - Channel 1
+
+# Higher power for large living room coverage
+RADIO_OVERRIDE_radio0_txpower="20"      # 5GHz
+RADIO_OVERRIDE_radio1_txpower="22"      # 2.4GHz
 ```
 
 ## 🎯 Common Use Cases
 
-### Different Router Locations
-- **Main Router**: Full power, all VLANs/SSIDs, optimal channels
-- **Bedroom Router**: Reduced power, no guest networks, different channels
-- **Office Router**: High performance, work VLANs only, WPA3 enterprise
-- **Garage Router**: Industrial settings, limited networks, weatherproof setup
+### Different Access Point Locations
+
+- **Living Room AP**: Higher power, optimal channels for main coverage
+- **Office AP**: Moderate power, channels avoiding interference
+- **Garage AP**: Lower power, weatherproof considerations
 
 ### Hardware Variations
-- **Archer C7**: Reduced power (thermal), conservative modes, port mapping
-- **Archer AX Series**: WiFi 6 optimization, higher power, modern features
-- **Netgear Models**: Standard optimization, good thermal, reliable defaults
-- **GL.iNet Travel**: Compact settings, limited VLANs, battery optimization
+
+- **TP-Link APs**: Specific switch port configurations
+- **Ubiquiti APs**: Different interface naming and capabilities
+- **Generic APs**: Conservative settings that work everywhere
 
 ### Network Scenarios
-- **Home Segmentation**: Main (VLAN 10), Guest (VLAN 20), IoT (VLAN 30)
-- **Small Business**: Admin (VLAN 10), Employee (VLAN 20), Guest (VLAN 30), Servers (VLAN 40)
-- **Airbnb/Hotel**: Management (VLAN 10), Guest rooms (VLAN 20-29), Services (VLAN 30)
+
+- **Home Network**: Management, trusted devices, guest, and IoT VLANs
+- **Small Office**: Departmental segmentation with guest access
+- **Multi-tenant**: Isolated networks per tenant or area
 
 ## 🚀 Deployment Commands
 
 ### Complete Deployment
+
 ```bash
-# Deploy both network and wireless to single router
-./deploy-networks.sh routers/main-router.conf
-./deploy-wireless.sh routers/main-router.conf
+# Deploy everything to all access points
+./deploy-complete.sh aps/*.conf
 
-# Deploy to multiple routers
-./deploy-networks.sh routers/*.conf
-./deploy-wireless.sh routers/*.conf
+# Deploy to specific access points
+./deploy-complete.sh aps/ap-livingroom.conf aps/ap-office.conf
 
-# Deploy specific configurations
-./deploy-networks.sh routers/main-router.conf routers/bedroom-router.conf
-./deploy-wireless.sh routers/main-router.conf routers/bedroom-router.conf
+# Deploy with verbose output
+./deploy-complete.sh -v aps/*.conf
+
+# Test deployment without making changes
+./deploy-complete.sh -d aps/*.conf
 ```
 
 ### Testing and Debugging
+
 ```bash
-# Test network deployment (dry run)
-./deploy-networks.sh -d routers/main-router.conf
+# Test network configuration only
+./deploy-networks.sh -d -v aps/ap-livingroom.conf
 
-# Test wireless deployment with verbose output
-./deploy-wireless.sh -v -d routers/main-router.conf
+# Test wireless configuration only
+./deploy-wireless.sh -d -v aps/ap-livingroom.conf
 
-# Test all routers with both systems
-./deploy-networks.sh -d -v routers/*.conf
-./deploy-wireless.sh -d -v routers/*.conf
+# Deploy networks only (no wireless)
+./deploy-complete.sh -n aps/*.conf
+
+# Deploy wireless only (networks must exist)
+./deploy-complete.sh -w aps/*.conf
 ```
 
 ### Maintenance Workflows
+
 ```bash
-# Update only wireless configurations
-./deploy-wireless.sh routers/*.conf
+# Update wireless settings across all APs
+./deploy-wireless.sh aps/*.conf
 
-# Update only network configurations
-./deploy-networks.sh routers/*.conf
+# Deploy to single AP for testing
+./deploy-complete.sh aps/ap-testlab.conf
 
-# Full infrastructure update
-./deploy-networks.sh routers/*.conf && ./deploy-wireless.sh routers/*.conf
+# Check what would change before applying
+./deploy-complete.sh -d aps/*.conf | grep -E "(would|UCI)"
 ```
 
 ## 🔑 Key Features Explained
 
 ### 🔧 Dual Common Overrides System
-- **Network Overrides**: Hardware-specific network settings (interfaces, ports, switch config)
-- **Wireless Overrides**: Hardware-specific radio settings (power, channels, capabilities)
-- **Benefits**: No duplicate configuration, consistent hardware optimization across both systems
-- **Usage**: Configure in `network-configs/common-overrides.conf` and `wireless-configs/common-overrides.conf`
 
-### 📍 Unified Router-Specific Overrides
-- **Single Config File**: One router config handles both network and wireless overrides
-- **Purpose**: Customize settings for specific router locations or purposes
-- **Benefits**: Fine-tune each router while maintaining shared definitions
-- **Usage**: Add both `VLAN_OVERRIDE_*` and `SSID_OVERRIDE_*` variables to `routers/*.conf` files
+- **Network Common Overrides**: VLAN configurations, switch settings, hardware detection
+- **Wireless Common Overrides**: Radio settings, country codes, power levels
+- Applied automatically to ALL access points, with AP-specific override capability
+
+### 📍 Unified Access Point-Specific Overrides
+
+- **Single Configuration File**: Each AP has one file containing both network and wireless overrides
+- **Deployment Coordination**: Both systems use the same AP configuration files
+- **Consistent Naming**: AP_IP, AP_NAME variables used by both deployment scripts
 
 ### 🚀 Coordinated Deployment
-- **Two-Stage Process**: Deploy networks first, then wireless on top
-- **Independent Operation**: Each system can be deployed separately for updates
-- **Benefits**: Consistent deployment, error handling, infrastructure-as-code approach
-- **Usage**: Use both deployment scripts with the same router config files
+
+- **Proper Sequence**: Network deployment creates VLANs before wireless maps SSIDs to them
+- **Shared Configuration**: Both systems access the same AP configuration files
+- **Synchronized State**: Ensures VLANs and wireless networks are properly aligned
 
 ### 🔄 Configuration Synchronization
-- **VLAN-to-SSID Mapping**: SSIDs automatically map to configured VLAN names
-- **Consistent Naming**: VLAN names become wireless network names in UCI
-- **Override Coordination**: Router configs can override both network and wireless for same router
-- **Benefits**: Ensures network and wireless configurations stay aligned
+
+- **Atomic Operations**: Each deployment is all-or-nothing per access point
+- **Rollback Capability**: Failed deployments leave previous configuration intact
+- **Validation**: SSH connectivity tested before attempting configuration
 
 ## 📚 Documentation
 
-- **[network-configs/README.md](network-configs/README.md)** - Network system detailed documentation
-- **[wireless-configs/README.md](wireless-configs/README.md)** - Wireless system detailed documentation
-- **[EXAMPLE-USAGE.md](EXAMPLE-USAGE.md)** - Real-world usage examples and scenarios
-- **[COMMON-OVERRIDES.md](COMMON-OVERRIDES.md)** - Common overrides system explained
-- **[MIGRATION.md](MIGRATION.md)** - Migration guide from older systems
-- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Common issues and solutions
+- **[Common Overrides System](COMMON-OVERRIDES.md)**: Detailed guide to the three-layer configuration system
+- **[Example Usage](EXAMPLE-USAGE.md)**: Step-by-step examples and common scenarios
+- **Configuration Templates**: Example files in each directory showing proper syntax
 
 ## 🚀 Quick Setup Guide
 
 ### 1. Design Your Network Architecture
-```bash
-# Plan your VLANs and corresponding SSIDs
-# Example: VLAN 10 (mgmt) → MainWiFi, VLAN 20 (guest) → GuestWiFi, VLAN 30 (iot) → IoTWiFi
-```
+
+Plan your VLAN segmentation and wireless networks:
+- Management VLAN (AP management)
+- Trusted devices (computers, phones)
+- Guest network (visitor access)
+- IoT devices (smart home, sensors)
 
 ### 2. Create Your VLAN Definitions
+
 ```bash
-# Copy examples and customize
-cp network-configs/vlan_10.conf.example network-configs/vlan_10.conf
-cp network-configs/vlan_20.conf.example network-configs/vlan_20.conf
-cp network-configs/vlan_30.conf.example network-configs/vlan_30.conf
-# Edit with your VLAN settings, etc.
+# Create files in network-configs/ for each VLAN
+cp network-configs/vlan_10_management.conf.example network-configs/vlan_10_management.conf
+# Edit VLAN_ID, VLAN_NAME, and port configurations
 ```
 
 ### 3. Create Your SSID Definitions
+
 ```bash
-# Copy examples and customize
+# Create files in wireless-configs/ for each SSID
 cp wireless-configs/ssid_main.conf.example wireless-configs/ssid_main.conf
-cp wireless-configs/ssid_guest.conf.example wireless-configs/ssid_guest.conf
-cp wireless-configs/ssid_iot.conf.example wireless-configs/ssid_iot.conf
-# Edit with your network names, passwords, and VLAN mappings
+# Edit SSID, VLAN_ID, encryption, and radio settings
 ```
 
 ### 4. Set Up Hardware Optimizations
+
 ```bash
-# Copy and customize common overrides for both systems
-cp network-configs/common-overrides.conf.example network-configs/common-overrides.conf
-cp wireless-configs/common-overrides.conf.example wireless-configs/common-overrides.conf
-# Add your router models and optimizations
+# Edit common override files for your AP models
+vim network-configs/common-overrides.conf    # Network/switch settings
+vim wireless-configs/common-overrides.conf   # Radio/wireless settings
 ```
 
-### 5. Create Router Configurations
+### 5. Create Access Point Configurations
+
 ```bash
-# Copy examples and customize
-cp routers/main-router.conf.example routers/my-main-router.conf
-cp routers/bedroom-router.conf.example routers/my-bedroom-router.conf
-# Edit with your router IPs and location-specific settings
+# Create configuration file for each access point
+cp aps/ap-example.conf.example aps/ap-livingroom.conf
+# Edit AP_IP, AP_NAME, and location-specific settings
 ```
 
 ### 6. Test and Deploy
+
 ```bash
-# Test network deployment first
-./deploy-networks.sh -d routers/my-main-router.conf
+# Test configuration first
+./deploy-complete.sh -d aps/*.conf
 
-# Test wireless deployment
-./deploy-wireless.sh -d routers/my-main-router.conf
-
-# Deploy if tests look good
-./deploy-networks.sh routers/my-main-router.conf
-./deploy-wireless.sh routers/my-main-router.conf
+# Deploy to access points
+./deploy-complete.sh aps/*.conf
 ```
 
 ## 🔬 Advanced Features
 
 ### SSH Key Authentication
+
+Configure SSH keys for secure, passwordless deployment:
+
 ```bash
-# In router config - works for both deployment systems
-SSH_KEY="/home/user/.ssh/openwrt_key"
-SSH_PORT="2222"
+# Generate SSH key for OpenWRT access
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/openwrt_key
+
+# Add to access point configuration
+echo 'SSH_KEY="/home/user/.ssh/openwrt_key"' >> aps/ap-livingroom.conf
 ```
 
 ### Hardware Detection (Both Systems)
+
+Both network and wireless systems automatically detect hardware and apply optimizations:
+
 ```bash
+# Network system detects:
+- Switch port configurations
+- Interface naming schemes
+- VLAN capabilities
 
-## Requirements
+# Wireless system detects:
+- Radio capabilities
+- Antenna configurations
+- Power limitations
+- Channel restrictions
+```
 
-- OpenWRT routers with UCI wireless configuration
-- SSH access to routers
-- Bash shell for deployment script
-- SCP support for file transfers
+Example hardware-specific settings:
 
-## Troubleshooting
-
-### Common Issues
-- **SSH Connection Failed**: Check IP, port, and authentication
-- **Override Not Applied**: Verify syntax and precedence rules
-- **Hardware Not Detected**: Add debug output to common-overrides.conf
-
-### Debug Commands
 ```bash
-# Check applied configuration on router
-ssh root@192.168.1.1 "uci show wireless"
-
-# View deployment logs
-./deploy-wireless.sh -v routers/router.conf
-
-# Check override file on router
-ssh root@192.168.1.1 "cat /tmp/wireless-config-*/wireless-configs/router-overrides.conf"
+# In common-overrides.conf files
+case "$HARDWARE_MODEL" in
+    *"TP-Link Archer"*)
+        # TP-Link specific optimizations
+        RADIO_OVERRIDE_radio0_htmode="VHT80"
+        VLAN_PORT_CONFIG="switch0"
+        ;;
+    *"Ubiquiti"*)
+        # Ubiquiti specific optimizations
+        RADIO_OVERRIDE_radio0_txpower="23"
+        MAIN_IFACE="eth0"
+        ;;
+esac
 ```
 
 ## Contributing
 
-When adding new features or router support:
-1. Test with dry run first
-2. Update documentation
-3. Add examples for new hardware
-4. Follow existing naming conventions
+1. Fork the repository
+2. Create a feature branch
+3. Test your changes with `-d` (dry run) mode
+4. Submit a pull request
 
 ## License
 
-This wireless configuration management system is provided as-is for OpenWRT router management.
+This project is licensed under the MIT License - see the LICENSE file for details.

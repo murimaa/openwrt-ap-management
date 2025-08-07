@@ -12,7 +12,7 @@ VLAN_PROTO="dhcp"  # dhcp, static, or none
 
 # If using static IP configuration (when VLAN_PROTO="static")
 # -> Don't do this: VLAN_IPADDR="192.168.10.1"
-# -> Instead, in routers/router.conf: VLAN_OVERRIDE_10_ipaddr="192.168.10.1"
+# -> Instead, in aps/ap.conf: VLAN_OVERRIDE_10_ipaddr="192.168.10.1"
 # VLAN_NETMASK="255.255.255.0"
 # VLAN_GATEWAY="192.168.10.1"
 # VLAN_DNS="8.8.8.8 8.8.4.4"

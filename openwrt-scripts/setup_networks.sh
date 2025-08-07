@@ -1,7 +1,7 @@
 #!/bin/sh
 
 CONFIG_DIR="./network-configs"
-ROUTER_OVERRIDES_FILE="$CONFIG_DIR/router-overrides.conf"
+ROUTER_OVERRIDES_FILE="$CONFIG_DIR/common-overrides.conf"  # Access point-specific overrides (legacy filename for compatibility)
 
 # Colors for output
 RED='\033[0;31m'
@@ -16,7 +16,7 @@ NC='\033[0m' # No Color
 DRY_RUN=false
 VERBOSE=false
 
-# Get router identification for logging
+# Get access point identification for logging (supports legacy ROUTER_ variables)
 ROUTER_PREFIX=""
 if [ -n "$ROUTER_NAME" ]; then
     ROUTER_PREFIX="[$ROUTER_NAME] "
@@ -116,9 +116,9 @@ run_cmd() {
   fi
 }
 
-# Load router-specific overrides if they exist
+# Load access point-specific overrides if they exist
 if [ -f "$ROUTER_OVERRIDES_FILE" ]; then
-  log_info "Loading router-specific overrides: $ROUTER_OVERRIDES_FILE"
+  log_info "Loading access point-specific overrides: $ROUTER_OVERRIDES_FILE"
   . "$ROUTER_OVERRIDES_FILE"
 fi
 
@@ -145,25 +145,14 @@ apply_vlan_overrides() {
   [ -n "$override_dns" ] && VLAN_DNS="$override_dns"
   [ -n "$override_extra" ] && VLAN_EXTRA="$override_extra"
 
-  # Check if this VLAN should be disabled on this router
+  # Check if this VLAN should be disabled on this access point
   if [ "$override_disabled" = "1" ]; then
-    log_warning "VLAN $vlan_id disabled by router override"
+    log_warning "VLAN $vlan_id disabled by access point override"
     return 1
   fi
 
   return 0
 }
-
-# === BACKUP ===
-log_info "Backing up current config..."
-if [ "$DRY_RUN" = "true" ]; then
-  echo -e "${ROUTER_PREFIX}${YELLOW}[DRY-RUN]${NC} uci export > /etc/config/backup-before-vlan.txt"
-else
-  if [ "$VERBOSE" = "true" ]; then
-    echo -e "${ROUTER_PREFIX}${CYAN}[VERBOSE]${NC} uci export > /etc/config/backup-before-vlan.txt"
-  fi
-  uci export > /etc/config/backup-before-vlan.txt
-fi
 
 # === CLEANUP EXISTING VLANs ===
 log_info "Cleaning up existing VLANs from switch config..."
@@ -209,7 +198,7 @@ for FILE in "$CONFIG_DIR"/vlan_*.conf; do
   VLAN_UNTAGGED=${VLAN_UNTAGGED:-0}
   VLAN_PROTO=${VLAN_PROTO:-none}
 
-  # Apply router-specific overrides for this VLAN
+  # Apply access point-specific overrides for this VLAN
   if ! apply_vlan_overrides "$VLAN_ID"; then
     # VLAN is disabled, skip it
     unset VLAN_ID VLAN_NAME VLAN_DESCRIPTION VLAN_UNTAGGED VLAN_PROTO VLAN_IPADDR VLAN_NETMASK VLAN_GATEWAY VLAN_DNS VLAN_EXTRA

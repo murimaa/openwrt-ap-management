@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # OpenWRT Wireless Configuration Deployment Script
-# New design: Deploy using router configuration files that contain both IP and overrides
+# Deploy using access point configuration files that contain both IP and overrides
 
 set -e  # Exit on error
 
@@ -24,9 +24,9 @@ NC='\033[0m' # No Color
 
 # Usage function
 usage() {
-    echo "Usage: $0 [OPTIONS] <router-config.conf> [router-config2.conf ...]"
+    echo "Usage: $0 [OPTIONS] <ap-config.conf> [ap-config2.conf ...]"
     echo ""
-    echo "Deploy wireless configuration to OpenWrt routers using router config files."
+    echo "Deploy wireless configuration to OpenWrt access points using AP config files."
     echo ""
     echo "Options:"
     echo "  -d, --dry-run     Show what would be deployed without making changes"
@@ -36,15 +36,15 @@ usage() {
     echo "  -h, --help        Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0 routers/main-router.conf"
-    echo "  $0 routers/main-router.conf routers/bedroom-router.conf"
-    echo "  $0 routers/*.conf"
-    echo "  $0 -d routers/main-router.conf  # Dry run"
-    echo "  $0 -v routers/main-router.conf  # Verbose execution"
+    echo "  $0 aps/ap-main.conf"
+    echo "  $0 aps/ap-main.conf aps/ap-bedroom.conf"
+    echo "  $0 aps/*.conf"
+    echo "  $0 -d aps/ap-main.conf  # Dry run"
+    echo "  $0 -v aps/ap-main.conf  # Verbose execution"
     echo ""
-    echo "Router config files should contain:"
-    echo "  ROUTER_IP=\"192.168.1.1\""
-    echo "  ROUTER_NAME=\"main-router\""
+    echo "Access point config files should contain:"
+    echo "  AP_IP=\"192.168.1.1\""
+    echo "  AP_NAME=\"ap-main\""
     echo "  SSH_USER=\"root\"           # Optional, defaults to 'root'"
     echo "  SSH_PORT=\"22\"             # Optional, defaults to '22'"
     echo "  SSH_KEY=\"/path/to/key\"    # Optional SSH key"
@@ -96,42 +96,46 @@ check_requirements() {
     log_verbose "Found $SSID_COUNT SSID configuration files"
 }
 
-# Load router configuration file
-load_router_config() {
+# Load access point configuration file
+load_ap_config() {
     local config_file="$1"
 
     if [ ! -f "$config_file" ]; then
-        log_error "Router config file not found: $config_file"
+        log_error "Access point config file not found: $config_file"
         return 1
     fi
 
     # Reset variables
-    unset ROUTER_IP ROUTER_NAME SSH_USER SSH_PORT SSH_KEY
+    unset AP_IP AP_NAME ROUTER_IP ROUTER_NAME SSH_USER SSH_PORT SSH_KEY
 
     # Source the config file
     if ! . "$config_file"; then
-        log_error "Failed to load router config: $config_file"
+        log_error "Failed to load access point config: $config_file"
         return 1
     fi
 
+    # Support both new AP_ and legacy ROUTER_ variables for compatibility
+    AP_IP="${AP_IP:-$ROUTER_IP}"
+    AP_NAME="${AP_NAME:-$ROUTER_NAME}"
+
     # Validate required variables
-    if [ -z "$ROUTER_IP" ]; then
-        log_error "ROUTER_IP not defined in $config_file"
+    if [ -z "$AP_IP" ]; then
+        log_error "AP_IP (or ROUTER_IP) not defined in $config_file"
         return 1
     fi
 
     # Set defaults
     SSH_USER="${SSH_USER:-$DEFAULT_SSH_USER}"
     SSH_PORT="${SSH_PORT:-$DEFAULT_SSH_PORT}"
-    ROUTER_NAME="${ROUTER_NAME:-$ROUTER_IP}"
+    AP_NAME="${AP_NAME:-$AP_IP}"
 
-    log_verbose "Loaded config: $ROUTER_NAME ($ROUTER_IP:$SSH_PORT)"
+    log_verbose "Loaded config: $AP_NAME ($AP_IP:$SSH_PORT)"
     return 0
 }
 
 # Test SSH connectivity
 test_ssh() {
-    local router_ip="$1"
+    local ap_ip="$1"
     local ssh_user="$2"
     local ssh_port="$3"
     local ssh_key="$4"
@@ -141,14 +145,14 @@ test_ssh() {
         ssh_cmd_opts="$ssh_cmd_opts -i $ssh_key"
     fi
 
-    if ssh $ssh_cmd_opts "$ssh_user@$router_ip" "echo 'SSH test successful'" >/dev/null 2>&1; then
+    if ssh $ssh_cmd_opts "$ssh_user@$ap_ip" "echo 'SSH test successful'" >/dev/null 2>&1; then
         return 0
     else
         return 1
     fi
 }
 
-# Create router-specific override file content
+# Create access point-specific override file content
 create_override_content() {
     local config_file="$1"
     local temp_file=$(mktemp)
@@ -158,19 +162,19 @@ create_override_content() {
     echo "$temp_file"
 }
 
-# Deploy to single router
-deploy_to_router() {
+# Deploy to single access point
+deploy_to_ap() {
     local config_file="$1"
     local dry_run="${2:-false}"
 
-    log_info "Processing router config: $config_file"
+    log_info "Processing access point config: $config_file"
 
-    # Load router configuration
-    if ! load_router_config "$config_file"; then
+    # Load access point configuration
+    if ! load_ap_config "$config_file"; then
         return 1
     fi
 
-    log_info "Deploying to $ROUTER_NAME ($ROUTER_IP:$SSH_PORT)..."
+    log_info "Deploying to $AP_NAME ($AP_IP:$SSH_PORT)..."
 
     # Build SSH command options
     local ssh_cmd_opts="$SSH_OPTS -p $SSH_PORT"
@@ -181,53 +185,53 @@ deploy_to_router() {
     fi
 
     # Test SSH connectivity
-    if ! test_ssh "$ROUTER_IP" "$SSH_USER" "$SSH_PORT" "$SSH_KEY"; then
-        log_error "Cannot connect to $ROUTER_IP:$SSH_PORT via SSH"
+    if ! test_ssh "$AP_IP" "$SSH_USER" "$SSH_PORT" "$SSH_KEY"; then
+        log_error "Cannot connect to $AP_IP:$SSH_PORT via SSH"
         return 1
     fi
 
-    # Create router-specific override content
+    # Create access point-specific override content
     local override_content_file
     override_content_file=$(create_override_content "$config_file")
 
     if [ "$dry_run" = "true" ]; then
-        log_info "[DRY RUN] Would copy configuration files to $ROUTER_IP"
-        log_info "[DRY RUN] Would create router overrides with $(wc -l < "$override_content_file") lines"
+        log_info "[DRY RUN] Would copy configuration files to $AP_IP"
+        log_info "[DRY RUN] Would create access point overrides with $(wc -l < "$override_content_file") lines"
         if [ "$VERBOSE" = "true" ]; then
             log_verbose "[DRY RUN] Override content:"
             cat "$override_content_file" | sed 's/^/    /'
         fi
-        log_info "[DRY RUN] Would execute setup script on $ROUTER_IP"
+        log_info "[DRY RUN] Would execute setup script on $AP_IP"
     fi
 
-    # Create temporary directory on router
+    # Create temporary directory on access point
     local temp_dir="/tmp/wireless-config-$$"
-    if ! ssh $ssh_cmd_opts "$SSH_USER@$ROUTER_IP" "mkdir -p $temp_dir"; then
-        log_error "Failed to create temporary directory on $ROUTER_IP"
+    if ! ssh $ssh_cmd_opts "$SSH_USER@$AP_IP" "mkdir -p $temp_dir"; then
+        log_error "Failed to create temporary directory on $AP_IP"
         rm -f "$override_content_file"
         return 1
     fi
 
     # Copy configuration files
     log_info "Copying wireless setup script..."
-    if ! scp $scp_cmd_opts "$SCRIPTS_DIR/$SETUP_SCRIPT" "$SSH_USER@$ROUTER_IP:$temp_dir/"; then
-        log_error "Failed to copy $SCRIPTS_DIR/$SETUP_SCRIPT to $ROUTER_IP"
+    if ! scp $scp_cmd_opts "$SCRIPTS_DIR/$SETUP_SCRIPT" "$SSH_USER@$AP_IP:$temp_dir/"; then
+        log_error "Failed to copy $SCRIPTS_DIR/$SETUP_SCRIPT to $AP_IP"
         rm -f "$override_content_file"
         return 1
     fi
 
     # Copy configuration files
     log_info "Copying configuration files..."
-    if ! scp $scp_cmd_opts -r ./"$CONFIG_DIR" "$SSH_USER@$ROUTER_IP:$temp_dir/"; then
-        log_error "Failed to copy configuration files to $ROUTER_IP"
+    if ! scp $scp_cmd_opts -r ./"$CONFIG_DIR" "$SSH_USER@$AP_IP:$temp_dir/"; then
+        log_error "Failed to copy configuration files to $AP_IP"
         rm -f "$override_content_file"
         return 1
     fi
 
-    # Copy router-specific override file
-    log_info "Creating router-specific overrides..."
-    if ! scp $scp_cmd_opts "$override_content_file" "$SSH_USER@$ROUTER_IP:$temp_dir/$CONFIG_DIR/router-overrides.conf"; then
-        log_error "Failed to copy override file to $ROUTER_IP"
+    # Copy access point-specific override file
+    log_info "Creating access point-specific overrides..."
+    if ! scp $scp_cmd_opts "$override_content_file" "$SSH_USER@$AP_IP:$temp_dir/$CONFIG_DIR/router-overrides.conf"; then
+        log_error "Failed to copy override file to $AP_IP"
         rm -f "$override_content_file"
         return 1
     fi
@@ -242,14 +246,14 @@ deploy_to_router() {
 
     # Make setup script executable and run it
     log_info "Executing setup script..."
-    if ssh $ssh_cmd_opts "$SSH_USER@$ROUTER_IP" "cd $temp_dir && chmod +x $SETUP_SCRIPT && ROUTER_NAME='$ROUTER_NAME' ROUTER_IP='$ROUTER_IP' ./$SETUP_SCRIPT $setup_args"; then
-        log_success "Configuration applied successfully on $ROUTER_NAME ($ROUTER_IP)"
+    if ssh $ssh_cmd_opts "$SSH_USER@$AP_IP" "cd $temp_dir && chmod +x $SETUP_SCRIPT && AP_NAME='$AP_NAME' AP_IP='$AP_IP' ROUTER_NAME='$AP_NAME' ROUTER_IP='$AP_IP' ./$SETUP_SCRIPT $setup_args"; then
+        log_success "Configuration applied successfully on $AP_NAME ($AP_IP)"
 
         # Cleanup
-        ssh $ssh_cmd_opts "$SSH_USER@$ROUTER_IP" "rm -rf $temp_dir" 2>/dev/null || true
+        ssh $ssh_cmd_opts "$SSH_USER@$AP_IP" "rm -rf $temp_dir" 2>/dev/null || true
         return 0
     else
-        log_error "Setup script failed on $ROUTER_NAME ($ROUTER_IP)"
+        log_error "Setup script failed on $AP_NAME ($AP_IP)"
         log_info "Temporary files left in $temp_dir for debugging"
         return 1
     fi
@@ -257,19 +261,19 @@ deploy_to_router() {
 
 # Main deployment function
 deploy_wireless() {
-    local router_configs=("$@")
+    local ap_configs=("$@")
     local dry_run="$DRY_RUN"
 
     check_requirements
 
     local success_count=0
     local error_count=0
-    local total_count=${#router_configs[@]}
+    local total_count=${#ap_configs[@]}
 
-    log_info "Starting deployment to $total_count router(s)..."
+    log_info "Starting deployment to $total_count access point(s)..."
 
-    for config_file in "${router_configs[@]}"; do
-        if deploy_to_router "$config_file" "$dry_run"; then
+    for config_file in "${ap_configs[@]}"; do
+        if deploy_to_ap "$config_file" "$dry_run"; then
             ((success_count++))
         else
             ((error_count++))
@@ -296,7 +300,7 @@ deploy_wireless() {
 # Parse command line arguments
 DRY_RUN=false
 VERBOSE=false
-ROUTER_CONFIGS=()
+AP_CONFIGS=()
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -318,24 +322,24 @@ while [[ $# -gt 0 ]]; do
             exit 1
             ;;
         *)
-            ROUTER_CONFIGS+=("$1")
+            AP_CONFIGS+=("$1")
             shift
             ;;
     esac
 done
 
-# Check if any router configs were provided
-if [ ${#ROUTER_CONFIGS[@]} -eq 0 ]; then
-    log_error "No router configuration files specified!"
+# Check if any access point configs were provided
+if [ ${#AP_CONFIGS[@]} -eq 0 ]; then
+    log_error "No access point configuration files specified!"
     echo ""
     usage
     exit 1
 fi
 
 # Validate that all config files exist
-for config_file in "${ROUTER_CONFIGS[@]}"; do
+for config_file in "${AP_CONFIGS[@]}"; do
     if [ ! -f "$config_file" ]; then
-        log_error "Router config file not found: $config_file"
+        log_error "Access point config file not found: $config_file"
         exit 1
     fi
 done
@@ -349,4 +353,4 @@ if [ "$VERBOSE" = "true" ]; then
     log_info "Verbose mode enabled"
 fi
 
-deploy_wireless "${ROUTER_CONFIGS[@]}"
+deploy_wireless "${AP_CONFIGS[@]}"

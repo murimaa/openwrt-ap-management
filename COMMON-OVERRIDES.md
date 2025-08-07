@@ -1,30 +1,30 @@
 # Common Overrides System
 
-The common overrides system allows you to define network and wireless settings that apply to all routers in your infrastructure, while still allowing individual routers to override these settings when needed.
+The common overrides system allows you to define network and wireless settings that apply to all access points in your infrastructure, while still allowing individual access points to override these settings when needed.
 
 ## Overview
 
 The system works with two parallel override systems:
 
-1. **Network Common Overrides** (`network-configs/common-overrides.conf`) - Applied to ALL routers' network/VLAN configuration
-2. **Wireless Common Overrides** (`wireless-configs/common-overrides.conf`) - Applied to ALL routers' wireless configuration
-3. **Router-Specific Overrides** (in individual `routers/*.conf` files) - Applied to specific routers for both network and wireless
+1. **Network Common Overrides** (`network-configs/common-overrides.conf`) - Applied to ALL access points' network/VLAN configuration
+2. **Wireless Common Overrides** (`wireless-configs/common-overrides.conf`) - Applied to ALL access points' wireless configuration
+3. **AP-Specific Overrides** (in individual `aps/*.conf` files) - Applied to specific access points for both network and wireless
 
-When deploying, the system combines all files with router-specific overrides taking precedence over common ones.
+When deploying, the system combines all files with AP-specific overrides taking precedence over common ones.
 
 ## File Structure
 
 ```
 openwrt/
 ├── network-configs/
-│   ├── common-overrides.conf       # Network settings applied to ALL routers
+│   ├── common-overrides.conf       # Network settings applied to ALL access points
 │   └── vlan_*.conf                 # VLAN definitions
 ├── wireless-configs/
-│   ├── common-overrides.conf       # Wireless settings applied to ALL routers
+│   ├── common-overrides.conf       # Wireless settings applied to ALL access points
 │   └── ssid_*.conf                 # SSID definitions
-├── routers/
-│   ├── main-router.conf            # Router-specific overrides (network + wireless)
-│   └── bedroom-router.conf         # Router-specific overrides (network + wireless)
+├── aps/
+│   ├── ap-main.conf                # AP-specific overrides (network + wireless)
+│   └── ap-bedroom.conf             # AP-specific overrides (network + wireless)
 ├── deploy-networks.sh
 ├── deploy-wireless.sh
 └── deploy-complete.sh
@@ -33,10 +33,10 @@ openwrt/
 ## How It Works
 
 During deployment:
-1. **Network Deployment**: Network common overrides → Router-specific network overrides → Applied to router
-2. **Wireless Deployment**: Wireless common overrides → Router-specific wireless overrides → Applied to router
+1. **Network Deployment**: Network common overrides → AP-specific network overrides → Applied to access point
+2. **Wireless Deployment**: Wireless common overrides → AP-specific wireless overrides → Applied to access point
 3. **Complete Deployment**: Both systems in sequence (networks first, then wireless)
-4. Router-specific settings always override common ones
+4. AP-specific settings always override common ones
 
 ## When to Use Common Overrides
 
@@ -44,12 +44,12 @@ During deployment:
 
 **Network Common Overrides:**
 - **Hardware-specific switch configurations** (port mappings, interface names)
-- **Standard VLAN behaviors** that apply across all routers
-- **Switch optimization settings** for router families
+- **Standard VLAN behaviors** that apply across all access points
+- **Switch optimization settings** for access point families
 - **Network interface defaults** based on hardware detection
 
 **Wireless Common Overrides:**
-- **Hardware-specific wireless optimizations** that apply to router models
+- **Hardware-specific wireless optimizations** that apply to access point models
 - **Country/regulatory settings** that are the same everywhere
 - **Security baseline settings** that should be consistent
 - **Power management defaults** for energy efficiency
@@ -57,8 +57,8 @@ During deployment:
 
 ### ❌ Don't Use For
 
-- **Router location-specific settings** (channels, power levels, specific port assignments)
-- **Network topology settings** (different VLANs per router, specific uplink ports)
+- **AP location-specific settings** (channels, power levels, specific port assignments)
+- **Network topology settings** (different VLANs per access point, specific uplink ports)
 - **Environment-specific optimizations** (bedroom vs garage settings)
 - **Site-specific static IPs** or network configurations
 
@@ -66,7 +66,7 @@ During deployment:
 
 ```bash
 #!/bin/sh
-# Network common overrides applied to ALL routers
+# Network common overrides applied to ALL access points
 # These settings provide baseline network configurations and hardware optimizations
 
 # ===========================================
@@ -112,7 +112,7 @@ esac
 # GLOBAL VLAN BEHAVIOR DEFAULTS
 # ===========================================
 
-# Default VLAN protocols (routers can override per-VLAN)
+# Default VLAN protocols (access points can override per-VLAN)
 # Most APs should use "none" for dumb AP operation
 VLAN_OVERRIDE_10_proto="${VLAN_OVERRIDE_10_proto:-none}"  # Management
 VLAN_OVERRIDE_20_proto="${VLAN_OVERRIDE_20_proto:-none}"  # Main
@@ -139,7 +139,7 @@ esac
 
 ```bash
 #!/bin/sh
-# Wireless common overrides applied to ALL routers
+# Wireless common overrides applied to ALL access points
 # These settings provide baseline configurations and hardware optimizations
 
 # ===========================================
@@ -170,7 +170,7 @@ case "$HARDWARE_MODEL" in
         RADIO_OVERRIDE_radio1_htmode="HE80"
         ;;
     *"Netgear"*)
-        # Netgear routers generally handle heat well
+        # Netgear access points generally handle heat well
         RADIO_OVERRIDE_radio0_txpower="18"
         RADIO_OVERRIDE_radio1_txpower="21"
         ;;
@@ -197,7 +197,7 @@ SSID_OVERRIDE_main_extra="ieee80211w=1"
 # ===========================================
 
 # Conservative power settings that work for most environments
-# Individual routers can increase/decrease as needed
+# Individual access points can increase/decrease as needed
 RADIO_OVERRIDE_radio0_txpower="${RADIO_OVERRIDE_radio0_txpower:-15}"
 RADIO_OVERRIDE_radio1_txpower="${RADIO_OVERRIDE_radio1_txpower:-18}"
 
@@ -210,16 +210,16 @@ RADIO_OVERRIDE_radio0_htmode="${RADIO_OVERRIDE_radio0_htmode:-HT20}"
 RADIO_OVERRIDE_radio1_htmode="${RADIO_OVERRIDE_radio1_htmode:-VHT40}"
 ```
 
-## Router-Specific Override Examples
+## Access Point-Specific Override Examples
 
-Individual router configs can override settings from both common override systems:
+Individual access point configs can override settings from both common override systems:
 
 ```bash
 #!/bin/sh
-# routers/high-performance-router.conf
+# aps/ap-high-performance.conf
 
-ROUTER_IP="192.168.1.1"
-ROUTER_NAME="main-router"
+AP_IP="192.168.1.1"
+AP_NAME="ap-main"
 
 # ===========================================
 # NETWORK OVERRIDES
@@ -229,12 +229,12 @@ ROUTER_NAME="main-router"
 MAIN_IFACE="eth0"        # Override common detection
 UPLINK_PORT="2"          # Different uplink port for this router
 
-# Router-specific VLAN configuration
+# AP-specific VLAN configuration
 VLAN_OVERRIDE_10_proto="static"     # Management VLAN gets static IP
 VLAN_OVERRIDE_10_ipaddr="192.168.10.100"
 VLAN_OVERRIDE_10_netmask="255.255.255.0"
 
-VLAN_OVERRIDE_30_disabled="1"       # Disable guest VLAN on this router
+VLAN_OVERRIDE_30_disabled="1"       # Disable guest VLAN on this access point
 
 # ===========================================
 # WIRELESS OVERRIDES
@@ -262,13 +262,13 @@ The common overrides work with all deployment methods:
 
 ```bash
 # Complete infrastructure deployment (uses both common override systems)
-./deploy-complete.sh routers/*.conf
+./deploy-complete.sh aps/*.conf
 
 # Network only (uses network common overrides)
-./deploy-networks.sh routers/*.conf
+./deploy-networks.sh aps/*.conf
 
 # Wireless only (uses wireless common overrides)
-./deploy-wireless.sh routers/*.conf
+./deploy-wireless.sh aps/*.conf
 ```
 
 ## Best Practices
@@ -356,17 +356,17 @@ VLAN_OVERRIDE_20_proto="none"
 
 ```bash
 # Test how all overrides combine
-./deploy-complete.sh -v -d routers/test-router.conf
+./deploy-complete.sh -v -d aps/ap-test.conf
 ```
 
 ### Test Individual Systems
 
 ```bash
 # Test network overrides only
-./deploy-networks.sh -v -d routers/test-router.conf
+./deploy-networks.sh -v -d aps/ap-test.conf
 
 # Test wireless overrides only
-./deploy-wireless.sh -v -d routers/test-router.conf
+./deploy-wireless.sh -v -d aps/ap-test.conf
 ```
 
 ### Verify Override Precedence

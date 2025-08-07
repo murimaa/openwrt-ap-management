@@ -1,10 +1,10 @@
 # Example Usage: OpenWRT Network & Wireless Infrastructure Management
 
-This document provides practical examples of using the unified network and wireless configuration system for OpenWrt routers.
+This document provides practical examples of using the unified network and wireless configuration system for OpenWrt access points.
 
 ## Quick Start Example
 
-Let's say you have 3 routers and want to set up a complete VLAN-segmented network with wireless access across all of them.
+Let's say you have 3 access points and want to set up a complete VLAN-segmented network with wireless access across all of them.
 
 ### Step 1: Set Up Your VLAN Network Configurations
 
@@ -75,17 +75,17 @@ SSID_FAST_ROAM="0"
 SSID_BANDS="2g 5g"
 ```
 
-### Step 3: Create Router Configuration Files
+### Step 3: Create Access Point Configuration Files
 
-Create individual config files for each router in the `routers/` directory. These files contain both network and wireless overrides:
+Create individual config files for each access point in the `aps/` directory. These files contain both network and wireless overrides:
 
-**routers/living-room.conf:**
+**aps/ap-living-room.conf:**
 ```bash
 #!/bin/sh
-# Living Room Router (Main AP)
-ROUTER_IP="192.168.1.1"
-ROUTER_NAME="living-room"
-ROUTER_LOCATION="Living room - main access point"
+# Living Room Access Point (Main AP)
+AP_IP="192.168.1.1"
+AP_NAME="ap-living-room"
+AP_LOCATION="Living room - main access point"
 SSH_USER="root"
 SSH_PORT="22"
 
@@ -94,11 +94,11 @@ MAIN_IFACE="eth0"
 UPLINK_PORT="1"
 CPU_PORT="6"
 
-# Network overrides - all VLANs enabled on main router
+# Network overrides - all VLANs enabled on main access point
 # No VLAN overrides needed - using defaults
 
 # Wireless configuration
-# Main router gets full power and all networks
+# Main access point gets full power and all networks
 RADIO_OVERRIDE_radio0_channel="6"        # 2.4GHz
 RADIO_OVERRIDE_radio1_channel="36"       # 5GHz
 RADIO_OVERRIDE_radio0_txpower="20"       # Max power
@@ -109,13 +109,13 @@ SSID_OVERRIDE_main_fast_roam="1"
 SSID_OVERRIDE_main_extra="max_inactivity=7200"
 ```
 
-**routers/bedroom.conf:**
+**aps/ap-bedroom.conf:**
 ```bash
 #!/bin/sh
-# Bedroom Router
-ROUTER_IP="192.168.1.2"
-ROUTER_NAME="bedroom"
-ROUTER_LOCATION="Master bedroom"
+# Bedroom Access Point
+AP_IP="192.168.1.2"
+AP_NAME="ap-bedroom"
+AP_LOCATION="Master bedroom"
 SSH_USER="root"
 SSH_PORT="22"
 
@@ -124,10 +124,11 @@ MAIN_IFACE="eth0"
 UPLINK_PORT="0"
 CPU_PORT="6"
 
-# Network overrides - disable guest VLAN in bedroom
-VLAN_OVERRIDE_30_disabled="1"  # No guest network in private area
+# Network overrides - disable guest network in bedroom
+VLAN_OVERRIDE_30_disabled="1"    # No guest network in private areas
 
-# Wireless configuration
+# Wireless configuration 
+# Bedroom access point uses different channels and lower power
 # Different channels to avoid interference
 RADIO_OVERRIDE_radio0_channel="11"       # 2.4GHz
 RADIO_OVERRIDE_radio1_channel="149"      # 5GHz
@@ -143,13 +144,13 @@ SSID_OVERRIDE_guest_disabled="1"
 SSID_OVERRIDE_iot_bands="2g"
 ```
 
-**routers/garage.conf:**
+**aps/ap-garage.conf:**
 ```bash
 #!/bin/sh
-# Garage Router
-ROUTER_IP="192.168.1.10"
-ROUTER_NAME="garage"
-ROUTER_LOCATION="Garage/workshop area"
+# Garage Access Point
+AP_IP="192.168.1.10"
+AP_NAME="ap-garage"
+AP_LOCATION="Garage/workshop area"
 SSH_USER="root"
 SSH_PORT="22"
 
@@ -180,35 +181,35 @@ SSID_OVERRIDE_main_extra="max_inactivity=3600"
 Now you can deploy both network and wireless configurations:
 
 ```bash
-# Deploy complete infrastructure to single router (test first)
-./deploy-complete.sh -d routers/living-room.conf
+# Deploy complete infrastructure to single access point (test first)
+./deploy-complete.sh -d aps/ap-living-room.conf
 
 # Deploy complete infrastructure (actual deployment)
-./deploy-complete.sh routers/living-room.conf
+./deploy-complete.sh aps/ap-living-room.conf
 
-# Deploy to all routers
-./deploy-complete.sh routers/*.conf
+# Deploy to all access points
+./deploy-complete.sh aps/*.conf
 
 # Deploy only networks or only wireless
-./deploy-networks.sh routers/*.conf     # VLANs only
-./deploy-wireless.sh routers/*.conf     # Wireless only
+./deploy-networks.sh aps/*.conf     # VLANs only
+./deploy-wireless.sh aps/*.conf     # Wireless only
 
-# Deploy to specific routers
-./deploy-complete.sh routers/living-room.conf routers/bedroom.conf
+# Deploy to specific access points
+./deploy-complete.sh aps/ap-living-room.conf aps/ap-bedroom.conf
 ```
 
 ## Real-World Workflow Examples
 
-### Scenario 1: Adding a New Router
+### Scenario 1: Adding a New Access Point
 
-You got a new router for the basement. Here's how to add it:
+You got a new access point for the basement. Here's how to add it:
 
-1. **Create router config:**
+1. **Create access point config:**
 ```bash
-# routers/basement.conf
+# aps/ap-basement.conf
 #!/bin/sh
-ROUTER_IP="192.168.1.15"
-ROUTER_NAME="basement"
+AP_IP="192.168.1.15"
+AP_NAME="ap-basement"
 SSH_USER="root"
 SSH_PORT="22"
 
@@ -236,13 +237,13 @@ SSID_OVERRIDE_main_bands="2g 5g"  # Main network on both bands
 
 2. **Test and deploy:**
 ```bash
-./deploy-complete.sh -d routers/basement.conf  # Test first
-./deploy-complete.sh routers/basement.conf     # Deploy
+./deploy-complete.sh -d aps/ap-basement.conf  # Test first
+./deploy-complete.sh aps/ap-basement.conf     # Deploy
 ```
 
 ### Scenario 2: Updating Network Infrastructure
 
-You want to add a new VLAN for security cameras across all routers:
+You want to add a new VLAN for security cameras across all access points:
 
 1. **Create the new VLAN config:**
 ```bash
@@ -269,14 +270,14 @@ SSID_ENCRYPTION="sae"
 SSID_BANDS="5g"         # High bandwidth for camera access
 ```
 
-3. **Deploy to all routers:**
+3. **Deploy to all access points:**
 ```bash
-./deploy-complete.sh routers/*.conf
+./deploy-complete.sh aps/*.conf
 ```
 
-### Scenario 3: Updating Multiple Routers
+### Scenario 3: Updating Multiple Access Points
 
-You want to change the guest network password across all routers:
+You want to change the guest network password across all access points:
 
 1. **Update the shared SSID config:**
 ```bash
@@ -284,9 +285,9 @@ You want to change the guest network password across all routers:
 SSID_KEY="new-guest-password-456"
 ```
 
-2. **Deploy wireless only to all routers:**
+2. **Deploy wireless only to all access points (faster):**
 ```bash
-./deploy-complete.sh routers/*.conf
+./deploy-wireless.sh aps/*.conf
 ```
 
 ### Scenario 4: Updating Hardware-Specific Settings
@@ -354,9 +355,9 @@ SSID_OVERRIDE_main_extra="max_inactivity=14400 disassoc_low_ack=0"
 SSID_OVERRIDE_iot_extra="isolate=1 max_num_sta=30"
 ```
 
-2. **Deploy just the office router:**
+2. **Deploy just the bedroom access point:**
 ```bash
-./deploy-complete.sh routers/office.conf
+./deploy-complete.sh aps/ap-bedroom.conf
 ```
 
 ### Scenario 6: SSH Key Authentication
@@ -396,7 +397,7 @@ Different router models have different switch configurations. Network-specific o
 **Global network optimizations** (`network-configs/common-overrides.conf`):
 ```bash
 #!/bin/sh
-# Hardware-specific network adjustments applied to all routers
+# Hardware-specific network adjustments applied to all access points
 
 HARDWARE_MODEL=$(cat /tmp/sysinfo/model 2>/dev/null || echo "unknown")
 
@@ -424,12 +425,12 @@ esac
 
 ### Wireless Hardware-Specific Optimizations
 
-Different router models need different wireless settings. Most hardware-specific optimizations should go in `wireless-configs/common-overrides.conf` to apply to all routers:
+Different access point models need different wireless settings. Most hardware-specific optimizations should go in `wireless-configs/common-overrides.conf` to apply to all access points:
 
 **Global wireless optimizations** (`wireless-configs/common-overrides.conf`):
 ```bash
 #!/bin/sh
-# Hardware-specific adjustments applied to all routers
+# Hardware-specific adjustments applied to all access points
 
 # Set country code if needed (optional - no default is set)
 # COUNTRY_CODE="FI"
@@ -450,19 +451,19 @@ case "$HARDWARE_MODEL" in
         RADIO_OVERRIDE_radio1_htmode="HE80"  # WiFi 6
         ;;
     *"Netgear"*)
-        # Netgear routers - good thermal management
+        # Netgear access points - good thermal management
         RADIO_OVERRIDE_radio0_txpower="18"
         RADIO_OVERRIDE_radio1_txpower="21"
         ;;
 esac
 ```
 
-**Router-specific overrides** (only if this router needs different settings):
+**Access point-specific overrides** (only if this access point needs different settings):
 ```bash
-# routers/special-archer.conf
+# aps/ap-special-archer.conf
 #!/bin/sh
-ROUTER_IP="192.168.1.25"
-ROUTER_NAME="special-archer"
+AP_IP="192.168.1.25"
+AP_NAME="ap-special-archer"
 SSH_USER="root"
 SSH_PORT="22"
 
@@ -470,7 +471,7 @@ SSH_PORT="22"
 RADIO_OVERRIDE_radio0_channel="11"
 RADIO_OVERRIDE_radio1_channel="149"
 
-# Override the common settings for this specific router
+# Override the common settings for this specific access point
 RADIO_OVERRIDE_radio0_txpower="14"  # Even lower for this location
 ```
 
@@ -481,9 +482,9 @@ RADIO_OVERRIDE_radio0_txpower="14"  # Even lower for this location
 See exactly what's happening during deployment:
 
 ```bash
-./deploy-complete.sh -v routers/problem-router.conf
-./deploy-networks.sh -v routers/problem-router.conf   # Networks only
-./deploy-wireless.sh -v routers/problem-router.conf   # Wireless only
+./deploy-complete.sh -v aps/ap-problem.conf
+./deploy-networks.sh -v aps/ap-problem.conf   # Networks only
+./deploy-wireless.sh -v aps/ap-problem.conf   # Wireless only
 ```
 
 ### Dry Run Testing
@@ -491,28 +492,28 @@ See exactly what's happening during deployment:
 Always test before deploying:
 
 ```bash
-# Test complete infrastructure on single router
-./deploy-complete.sh -d routers/new-router.conf
+# Test complete infrastructure on single access point
+./deploy-complete.sh -d aps/ap-new.conf
 
 # Test networks only
-./deploy-networks.sh -d routers/new-router.conf
+./deploy-networks.sh -d aps/ap-new.conf
 
 # Test wireless only
-./deploy-wireless.sh -d routers/new-router.conf
+./deploy-wireless.sh -d aps/ap-new.conf
 
 # Test all routers
-./deploy-complete.sh -d routers/*.conf
+./deploy-complete.sh aps/*.conf
 
 # Test with verbose output
-./deploy-complete.sh -v -d routers/*.conf
+./deploy-complete.sh -v -d aps/*.conf
 ```
 
 ### Manual Verification
 
-After deployment, verify settings on the router:
+After deployment, verify settings on the access point:
 
 ```bash
-# SSH to router and check
+# SSH to access point and check
 ssh root@192.168.1.1
 
 # Check network config
@@ -538,15 +539,15 @@ cat /tmp/wireless-config-*/wireless-configs/router-overrides.conf
 ## Best Practices
 
 1. **Always test first:** Use `-d` (dry run) before actual deployment
-2. **Use version control:** Keep your router configs in git
-3. **Use common overrides wisely:** Put hardware-specific settings in `common-overrides.conf`, router-specific settings in individual router configs
+2. **Use version control:** Keep your access point configs in git
+3. **Use common overrides wisely:** Put hardware-specific settings in `common-overrides.conf`, AP-specific settings in individual access point configs
 4. **Plan your VLANs:** Design your VLAN structure before deployment - changing VLANs later requires network reconfiguration
 5. **Test network first:** Deploy networks before wireless to ensure VLAN structure is correct
 6. **Set country code only if needed:** Country code has no default - only set `COUNTRY_CODE` if your deployment requires it
 7. **Document changes:** Add comments explaining why you made specific overrides
-8. **Test incrementally:** Deploy to one router first, then expand
-9. **Keep backups:** Router configs are small, keep backups of working configurations
-10. **Use descriptive names:** Router names should match their physical location/purpose
+8. **Test incrementally:** Deploy to one access point first, then expand
+9. **Keep backups:** Access point configs are small, keep backups of working configurations
+10. **Use descriptive names:** Access point names should match their physical location/purpose
 11. **Consistent naming:** Use consistent naming schemes for easy management
 12. **Map SSIDs to VLANs:** Ensure wireless network names match VLAN network names for proper mapping
 
@@ -618,4 +619,4 @@ SSID_OVERRIDE_iot_disabled="1"
 SSID_OVERRIDE_guest_extra="isolate=1 max_num_sta=10 max_inactivity=1800"
 ```
 
-This unified approach gives you complete control over both network infrastructure (VLANs) and wireless access across all routers while maintaining shared configurations and simple deployment workflows. The system ensures wireless networks are properly mapped to VLANs for complete network segmentation.
+This unified approach gives you complete control over both network infrastructure (VLANs) and wireless access across all access points while maintaining shared configurations and simple deployment workflows. The system ensures wireless networks are properly mapped to VLANs for complete network segmentation.

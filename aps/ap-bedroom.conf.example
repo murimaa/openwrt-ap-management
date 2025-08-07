@@ -1,13 +1,13 @@
 #!/bin/sh
-# Bedroom Router Configuration Example
+# Bedroom Access Point Configuration Example
 # This is typically an access point in a bedroom with optimized settings for that environment
 
 # ===========================================
-# ROUTER CONNECTION DETAILS
+# ACCESS POINT CONNECTION DETAILS
 # ===========================================
 
-ROUTER_IP="192.168.1.32"                    # Router IP address (REQUIRED)
-ROUTER_NAME="bedroom-router"                 # Friendly name for logs
+AP_IP="192.168.1.32"                        # Access point IP address (REQUIRED)
+AP_NAME="ap-bedroom"                         # Friendly name for logs
 SSH_USER="root"                              # SSH username (default: root)
 SSH_PORT="22"                                # SSH port (default: 22)
 # SSH_KEY="/home/user/.ssh/openwrt_key"     # Optional SSH key path
@@ -17,7 +17,7 @@ SSH_PORT="22"                                # SSH port (default: 22)
 # ===========================================
 
 # Hardware interface overrides (if different from common-overrides.conf)
-# Reference /etc/board.json on the router
+# Reference /etc/board.json on the access point
 # MAIN_IFACE="eth0"                          # Override main network interface
 # UPLINK_PORT="0"                            # Override switch uplink port
 # CPU_PORT="6"                               # Override switch CPU port
@@ -68,9 +68,9 @@ SSID_OVERRIDE_iot_extra="dtim_period=5"      # Extended DTIM for battery-powered
 # LOCATION-SPECIFIC SETTINGS
 # ===========================================
 
-# Bedroom router characteristics:
+# Bedroom access point characteristics:
 # - Reduced power settings (health, interference, battery life)
-# - Different channels from main router to avoid interference
+# - Different channels from other access points to avoid interference
 # - Guest network disabled for privacy
 # - Conservative HT modes for stability
 # - IoT network optimized for bedroom sensors (thermostats, etc.)

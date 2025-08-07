@@ -1,13 +1,13 @@
 #!/bin/sh
-# Main Router Configuration Example
-# This is typically your primary router with full functionality
+# Main Access Point Configuration Example
+# This is typically your primary access point with full functionality
 
 # ===========================================
-# ROUTER CONNECTION DETAILS
+# ACCESS POINT CONNECTION DETAILS
 # ===========================================
 
-ROUTER_IP="192.168.1.1"                     # Router IP address (REQUIRED)
-ROUTER_NAME="main-router"                    # Friendly name for logs
+AP_IP="192.168.1.1"                         # Access point IP address (REQUIRED)
+AP_NAME="ap-main"                            # Friendly name for logs
 SSH_USER="root"                              # SSH username (default: root)
 SSH_PORT="22"                                # SSH port (default: 22)
 # SSH_KEY="/home/user/.ssh/openwrt_key"     # Optional SSH key path
@@ -21,10 +21,10 @@ SSH_PORT="22"                                # SSH port (default: 22)
 # UPLINK_PORT="0"                            # Override switch uplink port
 # CPU_PORT="6"                               # Override switch CPU port
 
-# Management VLAN is untagged on this router (trunk port)
+# Management VLAN is untagged on this access point (trunk port)
 VLAN_OVERRIDE_10_untagged="1"
 
-# Management VLAN (VLAN 10) - Full configuration for main router
+# Management VLAN (VLAN 10) - Full configuration for main access point
 VLAN_OVERRIDE_10_proto="static"              # Use static IP for management
 VLAN_OVERRIDE_10_ipaddr="192.168.10.1"      # Gateway IP for management network
 VLAN_OVERRIDE_10_netmask="255.255.255.0"    # Management network subnet
@@ -45,7 +45,7 @@ VLAN_OVERRIDE_30_extra="igmp_snooping=1 multicast_querier=1" # Multicast optimiz
 # WIRELESS-SPECIFIC OVERRIDES
 # ===========================================
 
-# Radio optimization for main router (high performance)
+# Radio optimization for main access point (high performance)
 RADIO_OVERRIDE_radio0_channel="36"           # 5GHz - Channel 36 (non-DFS)
 RADIO_OVERRIDE_radio1_channel="6"            # 2.4GHz - Channel 6 (common, good performance)
 RADIO_OVERRIDE_radio0_txpower="20"          # 5GHz - High power for coverage
@@ -77,7 +77,7 @@ SSID_OVERRIDE_iot_extra="dtim_period=3"     # Power saving for battery devices
 # LOCATION-SPECIFIC SETTINGS
 # ===========================================
 
-# Main router typically has:
+# Main access point typically has:
 # - Full power settings for maximum coverage
 # - All VLANs enabled
 # - Static IP configuration for management
@@ -95,7 +95,7 @@ SSID_OVERRIDE_iot_extra="dtim_period=3"     # Power saving for battery devices
 # VLAN_OVERRIDE_30_extra="igmp_snooping=1 hash_max=512"        # IoT multicast optimization
 
 # Hardware-specific network optimizations
-# Based on your router model, you might need:
+# Based on your access point model, you might need:
 # MAIN_IFACE="eth1"              # For TP-Link Archer C7
 # UPLINK_PORT="1"                # For TP-Link Archer C7
 # CPU_PORT="0"                   # For TP-Link Archer C7

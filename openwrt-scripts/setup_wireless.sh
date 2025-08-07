@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 DRY_RUN=false
 VERBOSE=false
 
-# Get router identification for logging
+# Get access point identification for logging (supports legacy ROUTER_ variables)
 ROUTER_PREFIX=""
 if [ -n "$ROUTER_NAME" ]; then
     ROUTER_PREFIX="[$ROUTER_NAME] "
@@ -102,10 +102,10 @@ run_cmd() {
 RADIOS=$(uci show wireless | grep "=wifi-device" | cut -d. -f2 | cut -d= -f1)
 
 
-# Load router-specific overrides if they exist
-ROUTER_OVERRIDES_FILE="$CONFIG_DIR/router-overrides.conf"
+# Load access point-specific overrides if they exist
+ROUTER_OVERRIDES_FILE="$CONFIG_DIR/common-overrides.conf"  # Access point-specific overrides (legacy filename for compatibility)
 if [ -f "$ROUTER_OVERRIDES_FILE" ]; then
-  log_info "Loading router-specific overrides: $ROUTER_OVERRIDES_FILE"
+  log_info "Loading access point-specific overrides: $ROUTER_OVERRIDES_FILE"
   . "$ROUTER_OVERRIDES_FILE"
   # Apply global overrides
 fi
@@ -129,9 +129,9 @@ apply_ssid_overrides() {
   [ -n "$override_fast_roam" ] && SSID_FAST_ROAM="$override_fast_roam"
   [ -n "$override_extra" ] && SSID_EXTRA="$override_extra"
 
-  # Check if this SSID should be disabled on this router
+  # Check if this SSID should be disabled on this access point
   if [ "$override_disabled" = "1" ]; then
-    log_warning "SSID '$SSID_NAME' disabled by router override"
+    log_warning "SSID '$ssid_name' disabled by access point override"
     return 1
   fi
 
@@ -173,7 +173,7 @@ for FILE in "$CONFIG_DIR"/ssid*.conf; do
   SSID_FAST_ROAM=${SSID_FAST_ROAM:-0}
   SSID_BANDS=${SSID_BANDS:-"2g 5g"}  # Default to both bands if not specified
 
-  # Apply router-specific overrides for this SSID
+  # Apply access point-specific overrides for this SSID
   if ! apply_ssid_overrides "$SSID_NETWORK"; then
     # SSID is disabled, skip it
     unset SSID_NAME SSID_KEY SSID_NETWORK SSID_HIDDEN SSID_ENCRYPTION SSID_FAST_ROAM SSID_EXTRA SSID_BANDS

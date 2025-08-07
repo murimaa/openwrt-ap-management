@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # OpenWRT Complete Infrastructure Deployment Script
-# Deploy both network and wireless configurations using router configuration files
+# Deploy both network and wireless configurations using access point configuration files
 
 set -e  # Exit on error
 
@@ -19,9 +19,9 @@ NC='\033[0m' # No Color
 
 # Usage function
 usage() {
-    echo "Usage: $0 [OPTIONS] <router-config.conf> [router-config2.conf ...]"
+    echo "Usage: $0 [OPTIONS] <ap-config.conf> [ap-config2.conf ...]"
     echo ""
-    echo "Deploy complete OpenWRT infrastructure (networks + wireless) to routers."
+    echo "Deploy complete OpenWRT infrastructure (networks + wireless) to access points."
     echo "This script runs both network and wireless deployments in sequence."
     echo ""
     echo "Options:"
@@ -34,16 +34,16 @@ usage() {
     echo "  -h, --help            Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0 routers/main-router.conf                    # Complete deployment"
-    echo "  $0 routers/*.conf                              # Deploy to all routers"
-    echo "  $0 -n routers/main-router.conf                 # Networks only"
-    echo "  $0 -w routers/main-router.conf                 # Wireless only"
-    echo "  $0 -d routers/main-router.conf                 # Dry run both systems"
-    echo "  $0 -v routers/main-router.conf                 # Verbose output"
+    echo "  $0 aps/ap-main.conf                           # Complete deployment"
+    echo "  $0 aps/*.conf                                 # Deploy to all access points"
+    echo "  $0 -n aps/ap-main.conf                       # Networks only"
+    echo "  $0 -w aps/ap-main.conf                       # Wireless only"
+    echo "  $0 -d aps/ap-main.conf                       # Dry run both systems"
+    echo "  $0 -v aps/ap-main.conf                       # Verbose output"
     echo ""
-    echo "Router config files should contain:"
-    echo "  ROUTER_IP=\"192.168.1.1\""
-    echo "  ROUTER_NAME=\"main-router\""
+    echo "Access point config files should contain:"
+    echo "  AP_IP=\"192.168.1.1\""
+    echo "  AP_NAME=\"ap-main\""
     echo "  SSH_USER=\"root\"           # Optional, defaults to 'root'"
     echo "  SSH_PORT=\"22\"             # Optional, defaults to '22'"
     echo "  SSH_KEY=\"/path/to/key\"    # Optional SSH key"
@@ -102,15 +102,15 @@ build_deploy_args() {
     echo "${args[@]}"
 }
 
-# Deploy networks to routers
+# Deploy networks to access points
 deploy_networks() {
-    local router_configs=("$@")
+    local ap_configs=("$@")
     local deploy_args
     deploy_args=$(build_deploy_args)
 
     log_stage "Starting Network Deployment Phase"
 
-    if $NETWORK_DEPLOY_SCRIPT $deploy_args "${router_configs[@]}"; then
+    if $NETWORK_DEPLOY_SCRIPT $deploy_args "${ap_configs[@]}"; then
         log_success "Network deployment completed successfully"
         return 0
     else
@@ -119,15 +119,15 @@ deploy_networks() {
     fi
 }
 
-# Deploy wireless to routers
+# Deploy wireless to access points
 deploy_wireless() {
-    local router_configs=("$@")
+    local ap_configs=("$@")
     local deploy_args
     deploy_args=$(build_deploy_args)
 
     log_stage "Starting Wireless Deployment Phase"
 
-    if $WIRELESS_DEPLOY_SCRIPT $deploy_args "${router_configs[@]}"; then
+    if $WIRELESS_DEPLOY_SCRIPT $deploy_args "${ap_configs[@]}"; then
         log_success "Wireless deployment completed successfully"
         return 0
     else
@@ -138,15 +138,15 @@ deploy_wireless() {
 
 # Main deployment function
 deploy_complete() {
-    local router_configs=("$@")
+    local ap_configs=("$@")
     local network_success=false
     local wireless_success=false
-    local total_count=${#router_configs[@]}
+    local total_count=${#ap_configs[@]}
 
     check_requirements
 
     log_info "OpenWRT Complete Infrastructure Deployment"
-    log_info "Deploying to $total_count router(s): ${router_configs[*]##*/}"
+    log_info "Deploying to $total_count access point(s): ${ap_configs[*]##*/}"
 
     if [ "$DRY_RUN" = "true" ]; then
         log_warning "DRY RUN MODE - No actual changes will be made"
@@ -156,7 +156,7 @@ deploy_complete() {
 
     # Deploy networks (unless wireless-only mode)
     if [ "$WIRELESS_ONLY" != "true" ]; then
-        if deploy_networks "${router_configs[@]}"; then
+        if deploy_networks "${ap_configs[@]}"; then
             network_success=true
         else
             if [ "$NETWORKS_ONLY" = "true" ]; then
@@ -175,7 +175,7 @@ deploy_complete() {
 
     # Deploy wireless (unless networks-only mode)
     if [ "$NETWORKS_ONLY" != "true" ] && [ "$network_success" = "true" ]; then
-        if deploy_wireless "${router_configs[@]}"; then
+        if deploy_wireless "${ap_configs[@]}"; then
             wireless_success=true
         fi
         echo ""
@@ -205,14 +205,16 @@ deploy_complete() {
     if [ "$network_success" = "true" ] && [ "$wireless_success" = "true" ]; then
         log_success "🎉 Complete infrastructure deployment successful!"
         echo ""
-        log_info "Your OpenWRT routers are now configured with:"
+        log_info "Your OpenWRT access points are now configured with:"
         [ "$WIRELESS_ONLY" != "true" ] && log_info "  • VLAN network segmentation"
         [ "$NETWORKS_ONLY" != "true" ] && log_info "  • Wireless networks mapped to VLANs"
         [ "$NETWORKS_ONLY" != "true" ] && log_info "  • Optimized radio settings"
         echo ""
         log_info "Next steps:"
         log_info "  • Verify connectivity to each VLAN/SSID"
-        log_info "  • Monitor router performance and adjust as needed"
+        log_info "  • Monitor access point performance and adjust as needed"
+        log_info "  • Test client connectivity across network segments"
+
         exit 0
     else
         log_error "⚠️  Infrastructure deployment completed with errors"
@@ -225,7 +227,7 @@ DRY_RUN=false
 VERBOSE=false
 NETWORKS_ONLY=false
 WIRELESS_ONLY=false
-ROUTER_CONFIGS=()
+AP_CONFIGS=()
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -255,7 +257,7 @@ while [[ $# -gt 0 ]]; do
             exit 1
             ;;
         *)
-            ROUTER_CONFIGS+=("$1")
+            AP_CONFIGS+=("$1")
             shift
             ;;
     esac
@@ -268,17 +270,17 @@ if [ "$NETWORKS_ONLY" = "true" ] && [ "$WIRELESS_ONLY" = "true" ]; then
 fi
 
 # Check if any router configs were provided
-if [ ${#ROUTER_CONFIGS[@]} -eq 0 ]; then
-    log_error "No router configuration files specified!"
+if [ ${#AP_CONFIGS[@]} -eq 0 ]; then
+    log_error "No access point configuration files specified!"
     echo ""
     usage
     exit 1
 fi
 
 # Validate that all config files exist
-for config_file in "${ROUTER_CONFIGS[@]}"; do
+for config_file in "${AP_CONFIGS[@]}"; do
     if [ ! -f "$config_file" ]; then
-        log_error "Router config file not found: $config_file"
+        log_error "Access point config file not found: $config_file"
         exit 1
     fi
 done
@@ -293,4 +295,4 @@ else
 fi
 
 # Run deployment
-deploy_complete "${ROUTER_CONFIGS[@]}"
+deploy_complete "${AP_CONFIGS[@]}"
