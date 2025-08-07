@@ -25,6 +25,7 @@ usage() {
     echo "This script runs both network and wireless deployments in sequence."
     echo ""
     echo "Options:"
+    echo "  -b, --backup          Create UCI export backup before deployment"
     echo "  -n, --networks-only   Deploy only network configurations"
     echo "  -w, --wireless-only   Deploy only wireless configurations"
     echo "  -d, --dry-run         Show what would be deployed without making changes"
@@ -36,6 +37,7 @@ usage() {
     echo "Examples:"
     echo "  $0 aps/ap-main.conf                           # Complete deployment"
     echo "  $0 aps/*.conf                                 # Deploy to all access points"
+    echo "  $0 -b aps/ap-main.conf                       # Create backup first"
     echo "  $0 -n aps/ap-main.conf                       # Networks only"
     echo "  $0 -w aps/ap-main.conf                       # Wireless only"
     echo "  $0 -d aps/ap-main.conf                       # Dry run both systems"
@@ -75,6 +77,11 @@ log_stage() {
     echo -e "${PURPLE}[STAGE]${NC} $1"
 }
 
+log_verbose() {
+    if [ "$VERBOSE" = "true" ]; then
+        echo -e "${BLUE}[VERBOSE]${NC} $1"
+    fi
+}
 # Check if required deployment scripts exist
 check_requirements() {
     if [ ! -f "$NETWORK_DEPLOY_SCRIPT" ]; then
@@ -96,6 +103,7 @@ check_requirements() {
 build_deploy_args() {
     local args=()
 
+    [ "$BACKUP" = "true" ] && args+=("-b")
     [ "$DRY_RUN" = "true" ] && args+=("-d")
     [ "$VERBOSE" = "true" ] && args+=("-v")
 
@@ -153,6 +161,15 @@ deploy_complete() {
     fi
 
     echo ""
+
+    # Create backups if requested (and not in dry-run mode)
+    if [ "$BACKUP" = "true" ] && [ "$DRY_RUN" != "true" ]; then
+        log_info "Creating UCI backups before deployment..."
+        if ! ./backup-aps.sh "${ap_configs[@]}"; then
+            log_warning "Some backups failed, continuing with deployment..."
+        fi
+        echo ""
+    fi
 
     # Deploy networks (unless wireless-only mode)
     if [ "$WIRELESS_ONLY" != "true" ]; then
@@ -223,6 +240,7 @@ deploy_complete() {
 }
 
 # Parse command line arguments
+BACKUP=false
 DRY_RUN=false
 VERBOSE=false
 NETWORKS_ONLY=false
@@ -231,6 +249,10 @@ AP_CONFIGS=()
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        -b|--backup)
+            BACKUP=true
+            shift
+            ;;
         -n|--networks-only)
             NETWORKS_ONLY=true
             shift
@@ -287,11 +309,14 @@ done
 
 # Display deployment mode
 if [ "$NETWORKS_ONLY" = "true" ]; then
-    log_info "Mode: Networks Only"
+    log_verbose "Mode: Networks Only"
 elif [ "$WIRELESS_ONLY" = "true" ]; then
-    log_info "Mode: Wireless Only"
+    log_verbose "Mode: Wireless Only"
 else
-    log_info "Mode: Complete Infrastructure (Networks + Wireless)"
+    log_verbose "Mode: Complete Infrastructure (Networks + Wireless)"
+fi
+if [ "$BACKUP" = "true" ]; then
+    log_verbose "UCI backup mode enabled"
 fi
 
 # Run deployment

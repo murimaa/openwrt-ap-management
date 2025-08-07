@@ -29,6 +29,7 @@ usage() {
     echo "Deploy wireless configuration to OpenWrt access points using AP config files."
     echo ""
     echo "Options:"
+    echo "  -b, --backup      Create UCI export backup before deployment"
     echo "  -d, --dry-run     Show what would be deployed without making changes"
     echo "                    (passed to setup script - shows UCI commands without executing)"
     echo "  -v, --verbose     Enable verbose output"
@@ -39,6 +40,7 @@ usage() {
     echo "  $0 aps/ap-main.conf"
     echo "  $0 aps/ap-main.conf aps/ap-bedroom.conf"
     echo "  $0 aps/*.conf"
+    echo "  $0 -b aps/ap-main.conf  # Create backup first"
     echo "  $0 -d aps/ap-main.conf  # Dry run"
     echo "  $0 -v aps/ap-main.conf  # Verbose execution"
     echo ""
@@ -152,6 +154,8 @@ test_ssh() {
     fi
 }
 
+
+
 # Create access point-specific override file content
 create_override_content() {
     local config_file="$1"
@@ -188,6 +192,14 @@ deploy_to_ap() {
     if ! test_ssh "$AP_IP" "$SSH_USER" "$SSH_PORT" "$SSH_KEY"; then
         log_error "Cannot connect to $AP_IP:$SSH_PORT via SSH"
         return 1
+    fi
+
+    # Create backup if requested
+    if [ "$BACKUP" = "true" ] && [ "$dry_run" != "true" ]; then
+        log_info "Creating backup before deployment..."
+        if ! ./backup-aps.sh "$config_file"; then
+            log_warning "Backup failed, continuing with deployment..."
+        fi
     fi
 
     # Create access point-specific override content
@@ -300,10 +312,15 @@ deploy_wireless() {
 # Parse command line arguments
 DRY_RUN=false
 VERBOSE=false
+BACKUP=false
 AP_CONFIGS=()
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        -b|--backup)
+            BACKUP=true
+            shift
+            ;;
         -d|--dry-run)
             DRY_RUN=true
             shift
@@ -351,6 +368,9 @@ if [ "$DRY_RUN" = "true" ]; then
 fi
 if [ "$VERBOSE" = "true" ]; then
     log_info "Verbose mode enabled"
+fi
+if [ "$BACKUP" = "true" ]; then
+    log_info "UCI backup mode enabled"
 fi
 
 deploy_wireless "${AP_CONFIGS[@]}"

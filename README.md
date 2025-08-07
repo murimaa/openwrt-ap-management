@@ -16,6 +16,10 @@ Configures VLAN network segmentation on OpenWRT access points, setting up trunk 
 
 Deploys wireless networks (SSIDs) mapped to specific VLANs, creating segmented WiFi networks on your access points.
 
+### 3. **Complete Deployment** (`deploy-complete.sh`)
+
+Deploys both network and wireless configurations simultaneously, ensuring VLANs and SSIDs are properly mapped across all APs.
+
 ## ✨ Key Features
 
 - **🎯 VLAN-Segregated WiFi Networks**: Configure access points as dumb APs with VLAN-mapped SSIDs
@@ -49,6 +53,23 @@ Deploys wireless networks (SSIDs) mapped to specific VLANs, creating segmented W
 # Test configuration without applying changes
 ./deploy-complete.sh -d aps/*.conf
 ```
+
+### Command Line Parameters
+
+**All scripts:**
+| Parameter | Short | Description |
+|-----------|-------|-------------|
+| `--backup` | `-b` | Create UCI export backup before deployment |
+| `--dry-run` | `-d` | Show what would be deployed without making changes |
+| `--verbose` | `-v` | Enable verbose output and detailed logging |
+| `--help` | `-h` | Show usage information and examples |
+
+**Additional options for `deploy-complete.sh`:**
+
+| Parameter | Short | Description |
+|-----------|-------|-------------|
+| `--networks-only` | `-n` | Deploy only network configurations (skip wireless) |
+| `--wireless-only` | `-w` | Deploy only wireless configurations (skip networks) |
 
 ### Example Output
 
@@ -98,9 +119,6 @@ Deploys wireless networks (SSIDs) mapped to specific VLANs, creating segmented W
 [INFO] Starting deployment to 1 access point(s)...
 [INFO] Processing access point config: aps/ap-bedroom.conf
 [INFO] Deploying to ap-bedroom (192.168.1.30:22)...
-[INFO] [DRY RUN] Would copy configuration files to 192.168.1.30
-[INFO] [DRY RUN] Would create access point overrides with       62 lines
-[INFO] [DRY RUN] Would execute setup script on 192.168.1.30
 [INFO] Copying wireless setup script...
 [INFO] Copying configuration files...
 [INFO] Creating access point-specific overrides...
@@ -349,20 +367,18 @@ RADIO_OVERRIDE_radio1_txpower="22"      # 2.4GHz
 ./deploy-complete.sh -d aps/*.conf
 ```
 
-### Testing and Debugging
+### Partial deployment
 
 ```bash
+# Deploy networks only (no wireless)
+./deploy-complete.sh -n aps/*.conf
 # Test network configuration only
 ./deploy-networks.sh -d -v aps/ap-livingroom.conf
 
-# Test wireless configuration only
-./deploy-wireless.sh -d -v aps/ap-livingroom.conf
-
-# Deploy networks only (no wireless)
-./deploy-complete.sh -n aps/*.conf
-
 # Deploy wireless only (networks must exist)
 ./deploy-complete.sh -w aps/*.conf
+# Test wireless configuration only
+./deploy-wireless.sh -d -v aps/ap-livingroom.conf
 ```
 
 ### Maintenance Workflows
@@ -373,10 +389,25 @@ RADIO_OVERRIDE_radio1_txpower="22"      # 2.4GHz
 
 # Deploy to single AP for testing
 ./deploy-complete.sh aps/ap-testlab.conf
-
-# Check what would change before applying
-./deploy-complete.sh -d aps/*.conf | grep -E "(would|UCI)"
 ```
+
+### Backup and Restore
+
+```bash
+# Create UCI backups manually
+./backup-aps.sh aps/*.conf
+
+# Deploy with automatic backup
+./deploy-complete.sh -b aps/*.conf
+./deploy-networks.sh -b aps/ap-main.conf
+./deploy-wireless.sh -b aps/ap-main.conf
+
+# Restore from backup (example)
+scp ap-main.20231215_143022.uciexport root@192.168.1.1:/tmp/
+ssh root@192.168.1.1 "uci import < /tmp/ap-main.20231215_143022.uciexport && uci commit"
+```
+
+Backup files are created as: `{AP_NAME}.{YYYYMMDD_HHMMSS}.uciexport`
 
 ## 🔑 Key Features Explained
 
