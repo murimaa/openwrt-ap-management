@@ -139,13 +139,37 @@ apply_ssid_overrides() {
 
 # Function to apply radio overrides
 apply_radio_overrides() {
+  local detect_script="$(dirname "$0")/detect_bands.sh"
   local radio="$1"
 
+  # Check if detection script exists
+  if [ ! -x "$detect_script" ]; then
+    log_verbose "Band detection script not available, skipping band-specific overrides for $radio"
+    return
+  fi
+
+  # Get band assignment for this radio
+  local band_assignment=$("$detect_script" -q assign 2>/dev/null | grep "$radio")
+
+  if [ -z "$band_assignment" ]; then
+    log_verbose "Could not determine band for radio $radio, skipping band-specific overrides"
+    return
+  fi
+
+  local band=$(echo "$band_assignment" | cut -d: -f2)
+
+  if [ -z "$band" ]; then
+    log_verbose "Invalid band assignment format for radio $radio: $band_assignment"
+    return
+  fi
+
+  log_verbose "Applying band-specific overrides for $radio (band: $band)"
+
   # Apply radio-specific overrides using variable indirection
-  eval "override_channel=\$RADIO_OVERRIDE_${radio}_channel"
-  eval "override_txpower=\$RADIO_OVERRIDE_${radio}_txpower"
-  eval "override_htmode=\$RADIO_OVERRIDE_${radio}_htmode"
-  eval "override_country=\$RADIO_OVERRIDE_${radio}_country"
+  eval "override_channel=\$RADIO_OVERRIDE_${band}_channel"
+  eval "override_txpower=\$RADIO_OVERRIDE_${band}_txpower"
+  eval "override_htmode=\$RADIO_OVERRIDE_${band}_htmode"
+  eval "override_country=\$RADIO_OVERRIDE_${band}_country"
 
   # Apply overrides if they exist
   [ -n "$override_channel" ] && run_uci set wireless.$radio.channel="$override_channel"

@@ -40,12 +40,12 @@ VLAN_OVERRIDE_40_disabled="1"                # No server network needed in bedro
 # ===========================================
 
 # Radio optimization for bedroom (lower power, different channels)
-RADIO_OVERRIDE_radio0_channel="149"          # 5GHz - Channel 149 (DFS-free, different from main)
-RADIO_OVERRIDE_radio1_channel="1"            # 2.4GHz - Channel 1 (avoid interference)
-RADIO_OVERRIDE_radio0_txpower="15"           # 5GHz - Reduced power for bedroom
-RADIO_OVERRIDE_radio1_txpower="15"           # 2.4GHz - Reduced power for bedroom
-RADIO_OVERRIDE_radio0_htmode="VHT40"         # 5GHz - 40MHz (conservative for stability)
-RADIO_OVERRIDE_radio1_htmode="HT20"          # 2.4GHz - 20MHz (better compatibility, less power)
+RADIO_OVERRIDE_2g_channel="149"          # 5GHz - Channel 149 (DFS-free, different from main)
+RADIO_OVERRIDE_5g_channel="1"            # 2.4GHz - Channel 1 (avoid interference)
+RADIO_OVERRIDE_2g_txpower="15"           # 5GHz - Reduced power for bedroom
+RADIO_OVERRIDE_5g_txpower="15"           # 2.4GHz - Reduced power for bedroom
+RADIO_OVERRIDE_2g_htmode="VHT40"         # 5GHz - 40MHz (conservative for stability)
+RADIO_OVERRIDE_5g_htmode="HT20"          # 2.4GHz - 20MHz (better compatibility, less power)
 
 # Main network SSID - Prefer 5GHz in bedroom for less congestion
 SSID_OVERRIDE_main_bands="5g"                # 5GHz only (less congested, better performance)
@@ -89,8 +89,8 @@ SSID_OVERRIDE_iot_extra="dtim_period=5"      # Extended DTIM for battery-powered
 # VLAN_OVERRIDE_30_extra="igmp_snooping=1 multicast_querier=0" # IoT multicast without querier
 
 # Night mode settings (if supported by hardware)
-# RADIO_OVERRIDE_radio0_txpower="10"        # Even lower power for night time
-# RADIO_OVERRIDE_radio1_txpower="10"        # Even lower power for night time
+# RADIO_OVERRIDE_2g_txpower="10"        # Even lower power for night time
+# RADIO_OVERRIDE_5g_txpower="10"        # Even lower power for night time
 
 # Bandwidth limitations for bedroom (if on slower uplink)
 # SSID_OVERRIDE_main_extra="maxassoc=10"    # Limit concurrent connections
