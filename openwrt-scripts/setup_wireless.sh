@@ -131,7 +131,7 @@ apply_ssid_overrides() {
 
   # Check if this SSID should be disabled on this access point
   if [ "$override_disabled" = "1" ]; then
-    log_warning "SSID '$ssid_name' disabled by access point override"
+    log_warning "SSID '$SSID_NAME' disabled by access point override"
     return 1
   fi
 
