@@ -9,6 +9,7 @@ set -e  # Exit on error
 SCRIPTS_DIR="openwrt-scripts"
 CONFIG_DIR="wireless-configs"
 SETUP_SCRIPT="setup_wireless.sh"
+DETECT_BANDS_SCRIPT="detect_bands.sh"
 COMMON_OVERRIDES_FILE="$CONFIG_DIR/common-overrides.conf"
 DEFAULT_SSH_USER="root"
 DEFAULT_SSH_PORT="22"
@@ -85,6 +86,10 @@ check_requirements() {
 
     if [ ! -f "./$SCRIPTS_DIR/$SETUP_SCRIPT" ]; then
         log_error "Setup script ./$SCRIPTS_DIR/$SETUP_SCRIPT not found!"
+        exit 1
+    fi
+    if [ ! -f "./$SCRIPTS_DIR/$DETECT_BANDS_SCRIPT" ]; then
+        log_error "Setup script ./$SCRIPTS_DIR/$DETECT_BANDS_SCRIPT not found!"
         exit 1
     fi
 
@@ -225,9 +230,14 @@ deploy_to_ap() {
     fi
 
     # Copy configuration files
-    log_info "Copying wireless setup script..."
+    log_info "Copying wireless setup scripts..."
     if ! scp $scp_cmd_opts "$SCRIPTS_DIR/$SETUP_SCRIPT" "$SSH_USER@$AP_IP:$temp_dir/"; then
         log_error "Failed to copy $SCRIPTS_DIR/$SETUP_SCRIPT to $AP_IP"
+        rm -f "$override_content_file"
+        return 1
+    fi
+    if ! scp $scp_cmd_opts "$SCRIPTS_DIR/$DETECT_BANDS_SCRIPT" "$SSH_USER@$AP_IP:$temp_dir/"; then
+        log_error "Failed to copy $SCRIPTS_DIR/$DETECT_BANDS_SCRIPT to $AP_IP"
         rm -f "$override_content_file"
         return 1
     fi
