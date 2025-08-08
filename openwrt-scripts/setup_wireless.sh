@@ -173,8 +173,11 @@ for FILE in "$CONFIG_DIR"/ssid*.conf; do
   SSID_FAST_ROAM=${SSID_FAST_ROAM:-0}
   SSID_BANDS=${SSID_BANDS:-"2g 5g"}  # Default to both bands if not specified
 
+  # Extract identifier from filename (e.g., "ssid_vlan10_mgmt.conf" -> "vlan10_mgmt")
+  SSID_IDENTIFIER=$(basename "$FILE" .conf | sed 's/^ssid_//')
+
   # Apply access point-specific overrides for this SSID
-  if ! apply_ssid_overrides "$SSID_NETWORK"; then
+  if ! apply_ssid_overrides "$SSID_IDENTIFIER"; then
     # SSID is disabled, skip it
     unset SSID_NAME SSID_KEY SSID_NETWORK SSID_HIDDEN SSID_ENCRYPTION SSID_FAST_ROAM SSID_EXTRA SSID_BANDS
     continue

@@ -2,6 +2,23 @@
 
 This document provides practical examples of using the unified network and wireless configuration system for OpenWrt access points.
 
+## Pattern for override variable names
+
+**VLAN configuration**
+`VLAN_UNTAGGED="0"`
+override with:
+`VLAN_OVERRIDE_10_untagged="1"`
+
+`DISABLED="0"`
+override with:
+`SSID_OVERRIDE_vlan30_guest_disabled="1"`
+"vlan30_guest" comes from `ssid_vlan30_guest.conf` file name!
+
+Override radio channel for specific AP with:
+`RADIO_OVERRIDE_radio0_channel="6"`
+
+Similar pattern works for most other variables as well.
+
 ## Quick Start Example
 
 Let's say you have 3 access points and want to set up a complete VLAN-segmented network with wireless access across all of them.
@@ -148,8 +165,8 @@ RADIO_OVERRIDE_radio0_txpower="20"       # Max power
 RADIO_OVERRIDE_radio1_txpower="23"       # Max power
 
 # Optimize for performance
-SSID_OVERRIDE_vlan20_fast_roam="1"
-SSID_OVERRIDE_vlan20_extra="max_inactivity=7200"
+SSID_OVERRIDE_vlan20_main_fast_roam="1"
+SSID_OVERRIDE_vlan20_main_extra="max_inactivity=7200"
 ```
 
 **aps/ap-bedroom.conf:**
@@ -178,7 +195,7 @@ RADIO_OVERRIDE_radio0_txpower="15"
 RADIO_OVERRIDE_radio1_txpower="18"
 
 # Disable guest network in private area
-SSID_OVERRIDE_vlan30_disabled="1"
+SSID_OVERRIDE_vlan30_guest_disabled="1"
 
 ```
 
@@ -210,8 +227,8 @@ RADIO_OVERRIDE_radio0_txpower="18"
 RADIO_OVERRIDE_radio1_txpower="20"
 
 # Only main network and IoT in garage
-SSID_OVERRIDE_vlan30_disabled="1"
-SSID_OVERRIDE_vlan20_extra="max_inactivity=3600"
+SSID_OVERRIDE_vlan30_guest_disabled="1"
+SSID_OVERRIDE_vlan20_main_extra="max_inactivity=3600"
 ```
 
 ### Step 4: Deploy Complete Infrastructure
@@ -268,9 +285,9 @@ RADIO_OVERRIDE_radio0_txpower="20"  # High power for concrete walls
 RADIO_OVERRIDE_radio1_txpower="23"
 
 # Only main network needed in basement
-SSID_OVERRIDE_vlan30_disabled="1"
-SSID_OVERRIDE_vlan40_disabled="1"  # No separate IoT SSID
-SSID_OVERRIDE_vlan20_bands="2g 5g"  # Main network on both bands
+SSID_OVERRIDE_vlan30_guest_disabled="1"
+SSID_OVERRIDE_vlan40_iot_disabled="1"  # No separate IoT SSID
+SSID_OVERRIDE_vlan20_main_bands="2g 5g"  # Main network on both bands
 ```
 
 2. **Test and deploy:**
@@ -382,13 +399,13 @@ RADIO_OVERRIDE_radio1_channel="48"  # DFS channel for less congestion
 RADIO_OVERRIDE_radio1_htmode="VHT80"  # Max performance on 5GHz
 
 # Disable guest network in office for security
-SSID_OVERRIDE_guest_disabled="1"
+SSID_OVERRIDE_vlan30_guest_disabled="1"
 
 # Optimize main network for work devices
-SSID_OVERRIDE_vlan20_extra="max_inactivity=14400 disassoc_low_ack=0"
+SSID_OVERRIDE_vlan20_main_extra="max_inactivity=14400 disassoc_low_ack=0"
 
 # IoT network for office devices (printers, etc.) - only if IoT VLAN enabled
-SSID_OVERRIDE_vlan40_extra="isolate=1 max_num_sta=30"
+SSID_OVERRIDE_vlan40_iot_extra="isolate=1 max_num_sta=30"
 ```
 
 2. **Deploy just the bedroom access point:**
