@@ -103,7 +103,7 @@ RADIOS=$(uci show wireless | grep "=wifi-device" | cut -d. -f2 | cut -d= -f1)
 
 
 # Load access point-specific overrides if they exist
-ROUTER_OVERRIDES_FILE="$CONFIG_DIR/common-overrides.conf"  # Access point-specific overrides (legacy filename for compatibility)
+ROUTER_OVERRIDES_FILE="$CONFIG_DIR/overrides.conf"  # Access point-specific overrides
 if [ -f "$ROUTER_OVERRIDES_FILE" ]; then
   log_info "Loading access point-specific overrides: $ROUTER_OVERRIDES_FILE"
   . "$ROUTER_OVERRIDES_FILE"

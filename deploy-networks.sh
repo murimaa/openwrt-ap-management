@@ -242,7 +242,7 @@ deploy_to_ap() {
 
     # Copy access point-specific override file
     log_info "Creating access point-specific overrides..."
-    if ! scp $scp_cmd_opts "$override_content_file" "$SSH_USER@$AP_IP:$temp_dir/$CONFIG_DIR/router-overrides.conf"; then
+    if ! scp $scp_cmd_opts "$override_content_file" "$SSH_USER@$AP_IP:$temp_dir/$CONFIG_DIR/overrides.conf"; then
         log_error "Failed to copy override file to $AP_IP"
         rm -f "$override_content_file"
         return 1

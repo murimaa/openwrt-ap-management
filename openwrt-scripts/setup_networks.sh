@@ -1,7 +1,7 @@
 #!/bin/sh
 
 CONFIG_DIR="./network-configs"
-ROUTER_OVERRIDES_FILE="$CONFIG_DIR/common-overrides.conf"  # Access point-specific overrides (legacy filename for compatibility)
+ROUTER_OVERRIDES_FILE="$CONFIG_DIR/overrides.conf"  # Access point-specific overrides
 
 # Colors for output
 RED='\033[0;31m'
