@@ -98,9 +98,15 @@ run_cmd() {
     "$@"
   fi
 }
+DETECT_BANDS_SCRIPT="$(dirname "$0")/detect_bands.sh"
+
+# Check if detection script exists
+if [ ! -x "$DETECT_BANDS_SCRIPT" ]; then
+  log_error "Band detection script not available."
+  exit 1
+fi
 
 RADIOS=$(uci show wireless | grep "=wifi-device" | cut -d. -f2 | cut -d= -f1)
-
 
 # Load access point-specific overrides if they exist
 ROUTER_OVERRIDES_FILE="$CONFIG_DIR/overrides.conf"  # Access point-specific overrides
@@ -139,17 +145,10 @@ apply_ssid_overrides() {
 
 # Function to apply radio overrides
 apply_radio_overrides() {
-  local detect_script="$(dirname "$0")/detect_bands.sh"
   local radio="$1"
 
-  # Check if detection script exists
-  if [ ! -x "$detect_script" ]; then
-    log_verbose "Band detection script not available, skipping band-specific overrides for $radio"
-    return
-  fi
-
   # Get band assignment for this radio
-  local band_assignment=$("$detect_script" -q assign 2>/dev/null | grep "$radio")
+  local band_assignment=$("$DETECT_BANDS_SCRIPT" -q assign 2>/dev/null | grep "$radio")
 
   if [ -z "$band_assignment" ]; then
     log_verbose "Could not determine band for radio $radio, skipping band-specific overrides"
@@ -180,22 +179,15 @@ apply_radio_overrides() {
 
 # Function to assign radio bands using external detection script
 assign_radio_bands() {
-  local detect_script="$(dirname "$0")/detect_bands.sh"
-
-  if [ ! -x "$detect_script" ]; then
-    log_warning "Band detection script not found or not executable: $detect_script"
-    return 1
-  fi
-
   log_info "Assigning optimal radio bands..."
 
   # Get band assignments from detection script
   local assignments
   if [ "$VERBOSE" = "true" ]; then
-    assignments=$("$detect_script" assign 2>&1)
+    assignments=$("$DETECT_BANDS_SCRIPT" assign 2>&1)
     local exit_code=$?
   else
-    assignments=$("$detect_script" -q assign 2>/dev/null)
+    assignments=$("$DETECT_BANDS_SCRIPT" -q assign 2>/dev/null)
     local exit_code=$?
   fi
 
@@ -248,8 +240,8 @@ for FILE in "$CONFIG_DIR"/ssid*.conf; do
   fi
 
   for RADIO in $RADIOS; do
-    BAND=$(uci get wireless.$RADIO.band 2>/dev/null)
-    echo $SSID_BANDS $BAND
+    BAND=$("$DETECT_BANDS_SCRIPT" -q assign 2>/dev/null | grep "$RADIO" | cut -d: -f2)
+
     # Skip this radio if it's not in the specified bands
     if ! echo "$SSID_BANDS" | grep -q "$BAND"; then
       log_warning "Skipping SSID '$SSID_NAME' on $BAND ($RADIO) - not in specified bands: $SSID_BANDS"
