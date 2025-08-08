@@ -156,7 +156,7 @@ apply_vlan_overrides() {
 
 # === CLEANUP EXISTING VLANs ===
 log_info "Cleaning up existing VLANs from switch config..."
-VLAN_COUNT=$(uci show network | grep -c '=switch_vlan' || echo "0")
+VLAN_COUNT=$(uci show network 2>/dev/null | grep '=switch_vlan' | wc -l)
 if [ "$VLAN_COUNT" -gt 0 ]; then
   # Delete in reverse order to avoid index shifting
   i=$((VLAN_COUNT - 1))
@@ -241,10 +241,12 @@ for FILE in "$CONFIG_DIR"/vlan_*.conf; do
       # Create bridge device for VLAN
       BRIDGE_NAME="br-vlan${VLAN_ID}"
       DEVICE_NAME="dev${VLAN_ID}"
+      VLAN_IFACE="${MAIN_IFACE}.${VLAN_ID}"
 
       run_uci set network.$DEVICE_NAME=device
       run_uci set network.$DEVICE_NAME.name="$BRIDGE_NAME"
-      run_uci set network.$DEVICE_NAME.type='bridge'
+      run_uci set network.$DEVICE_NAME.type=bridge
+      run_uci set network.$DEVICE_NAME.ports="$VLAN_IFACE"
 
       INTERFACE_DEVICE="$BRIDGE_NAME"
     fi
