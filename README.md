@@ -8,6 +8,8 @@ Use case: You already have a network with VLANS and you want to setup/manage wif
 
 - The script **disables switch ports** except for the uplink port. So if your device has multiple ports and you're using them, the tool as-is will not work for you currently.
 
+- I have tested only with devices I have at hand. Though they do have variability in their configurations so should work fairly well with many others. However, I have not had Wifi 6 or above devices to test with.
+
 ## Tools included
 
 ### 1. **Backup Existing Configuration** (`backup-config.sh`)
