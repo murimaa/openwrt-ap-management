@@ -281,7 +281,7 @@ SSID_OVERRIDE_vlan20_bands="2g 5g"  # Main network on both bands
 
 ### Scenario 2: Updating Network Infrastructure
 
-You have created a new VLAN for security cameras, and want to add it across all access points.
+You have created a new VLAN for security cameras (you do this in your actual router!), and want to add it across all access points.
 
 1. **Create the new VLAN config:**
 **network-configs/vlan_50_cameras.conf:**

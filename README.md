@@ -1,16 +1,18 @@
-# OpenWRT WiFi Access Point Network & Wireless Management
+# OpenWRT WiFi Access Point Management Tools
 
 Use case: You already have a network with VLANS and you want to setup/manage wifi SSIDs for those VLANS. Use this tool to provision OpenWRT devices as wifi access points with VLAN segmentation and corresponding wireless networks, perfect for creating segmented wifi networks (main, guest, IoT, etc.). You will end up with "dumb" APs, with an IP address on management VLAN only.
 
-Designed to be used on fresh OpenWRT installations - **IF YOU HAVE EXISTING CONFIGURATIONS, PROCEED WITH CAUTION!** Please backup your current configuration.
-
 ### Caveats
 
-- The script **disables switch ports** except for the uplink port. So if your device has multiple ports and you're using them, the script as-is will not work for you currently.
+- Designed to be used on fresh OpenWRT installations - **IF YOU HAVE EXISTING CONFIGURATIONS, PROCEED WITH CAUTION!** Please backup your current configuration.
+
+- The script **disables switch ports** except for the uplink port. So if your device has multiple ports and you're using them, the tool as-is will not work for you currently.
+
+## Tools included
 
 ### 1. **Backup Existing Configuration** (`backup-config.sh`)
 
-Exports the currents network and wireless configurations from all APs.
+Exports the current network and wireless configurations from all or selected APs.
 
 ### 1. **Network Setup** (`deploy-networks.sh`)
 
@@ -18,7 +20,7 @@ Configures VLAN network segmentation on OpenWRT access points, setting up trunk 
 
 ### 2. **Wireless Deployment** (`deploy-wireless.sh`)
 
-Deploys wireless networks (SSIDs) mapped to specific VLANs, creating segmented WiFi networks on your access points.
+Deploys wireless networks (SSIDs) mapped to specific VLANs, creating segmented WiFi networks on your access points. You must do `deploy-networks.sh` first to have VLANs configured.
 
 ### 3. **Complete Deployment** (`deploy-complete.sh`)
 
@@ -29,7 +31,7 @@ Deploys both network and wireless configurations simultaneously, ensuring VLANs 
 - **📡 Easy AP Management**: Deploy configurations to multiple OpenWRT access points simultaneously
 - **🎯 VLAN-Segregated WiFi Networks**: Configure access points as dumb APs with VLAN-mapped SSIDs
 - **🔄 Coordinated Network & Wireless**: Ensures VLANs and SSIDs are properly mapped across all APs
-- **🔧 Hardware-Aware Configuration**: Optional optimizations for different AP models
+- **🔧 Hardware-Aware Configuration**: Optional optimizations for different AP models. Useful if you have plenty of APs with different models.
 - **⚙️ Three-Layer Override System**: Global defaults → Common overrides → AP-specific customizations
 - **🏠 Location-Specific Optimization**: Per-AP settings for different environments and hardware
 
@@ -65,6 +67,8 @@ Deploys both network and wireless configurations simultaneously, ensuring VLANs 
 
 
 ## 📋 Configuration Examples
+
+See more examples and common scenarios in [Example Usage](EXAMPLE-USAGE.md).
 
 ### Access Point Configuration
 ```bash
@@ -326,7 +330,7 @@ openwrt/
 ./deploy-networks.sh -b aps/ap-main.conf
 ./deploy-wireless.sh -b aps/ap-main.conf
 
-# Restore from backup (example)
+# Restore from backup with something like (example)
 scp -O ap-main.20231215_143022.uciexport root@192.168.1.1:/tmp/
 ssh root@192.168.1.1 "uci import < /tmp/ap-main.20231215_143022.uciexport && uci commit"
 ```
