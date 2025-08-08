@@ -46,12 +46,12 @@ VLAN_OVERRIDE_30_extra="igmp_snooping=1 multicast_querier=1" # Multicast optimiz
 # ===========================================
 
 # Radio optimization for main access point (high performance)
-RADIO_OVERRIDE_radio0_channel="36"           # 5GHz - Channel 36 (non-DFS)
-RADIO_OVERRIDE_radio1_channel="6"            # 2.4GHz - Channel 6 (common, good performance)
-RADIO_OVERRIDE_radio0_txpower="20"          # 5GHz - High power for coverage
-RADIO_OVERRIDE_radio1_txpower="20"          # 2.4GHz - High power for coverage
-RADIO_OVERRIDE_radio0_htmode="VHT80"        # 5GHz - 80MHz for maximum throughput
-RADIO_OVERRIDE_radio1_htmode="HT40"         # 2.4GHz - 40MHz for good performance
+RADIO_OVERRIDE_5g_channel="36"           # 5GHz - Channel 36 (non-DFS)
+RADIO_OVERRIDE_2g_channel="6"            # 2.4GHz - Channel 6 (common, good performance)
+RADIO_OVERRIDE_5g_txpower="20"          # 5GHz - High power for coverage
+RADIO_OVERRIDE_2g_txpower="20"          # 2.4GHz - High power for coverage
+RADIO_OVERRIDE_5g_htmode="VHT80"        # 5GHz - 80MHz for maximum throughput
+RADIO_OVERRIDE_2g_htmode="HT40"         # 2.4GHz - 40MHz for good performance
 
 # Main network SSID - Full band coverage
 SSID_OVERRIDE_main_bands="2g 5g"            # Enable on both bands

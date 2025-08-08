@@ -90,12 +90,12 @@ CPU_PORT="0"
 # ===========================================
 
 # Location-optimized radio settings
-RADIO_OVERRIDE_radio0_channel="36"      # 5GHz - Channel 36
-RADIO_OVERRIDE_radio1_channel="1"       # 2.4GHz - Channel 1
+RADIO_OVERRIDE_5g_channel="36"      # 5GHz - Channel 36
+RADIO_OVERRIDE_2g_channel="1"       # 2.4GHz - Channel 1
 
 # Higher power for large living room coverage
-RADIO_OVERRIDE_radio0_txpower="20"      # 5GHz
-RADIO_OVERRIDE_radio1_txpower="22"      # 2.4GHz
+RADIO_OVERRIDE_5g_txpower="20"      # 5GHz
+RADIO_OVERRIDE_5g_txpower="22"      # 2.4GHz
 ```
 
 ### VLAN Configuration

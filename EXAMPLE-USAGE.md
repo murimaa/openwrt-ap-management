@@ -159,10 +159,10 @@ CPU_PORT="0"
 # Wireless configuration
 # Main access point gets full power and all networks
 # Bands in radio0 and radio1 may be in either order depending on device
-RADIO_OVERRIDE_radio0_channel="6"        # 2.4GHz
-RADIO_OVERRIDE_radio1_channel="36"       # 5GHz
-RADIO_OVERRIDE_radio0_txpower="20"       # Max power
-RADIO_OVERRIDE_radio1_txpower="23"       # Max power
+RADIO_OVERRIDE_2g_channel="6"        # 2.4GHz
+RADIO_OVERRIDE_5g_channel="36"       # 5GHz
+RADIO_OVERRIDE_2g_txpower="20"       # Max power
+RADIO_OVERRIDE_5g_txpower="23"       # Max power
 
 # Optimize for performance
 SSID_OVERRIDE_vlan20_main_fast_roam="1"
@@ -188,11 +188,11 @@ VLAN_OVERRIDE_10_untagged="1"    # Management VLAN is untagged in bedroom uplink
 
 # Bedroom access point uses different channels and lower power
 # Different channels to avoid interference
-RADIO_OVERRIDE_radio0_channel="11"       # 2.4GHz
-RADIO_OVERRIDE_radio1_channel="149"      # 5GHz
+RADIO_OVERRIDE_2g_channel="11"       # 2.4GHz
+RADIO_OVERRIDE_5g_channel="149"      # 5GHz
 # Lower power for bedroom
-RADIO_OVERRIDE_radio0_txpower="15"
-RADIO_OVERRIDE_radio1_txpower="18"
+RADIO_OVERRIDE_2g_txpower="15"
+RADIO_OVERRIDE_5g_txpower="18"
 
 # Disable guest network in private area
 SSID_OVERRIDE_vlan30_guest_disabled="1"
@@ -219,12 +219,12 @@ VLAN_OVERRIDE_30_disabled="1"  # No guest network in garage
 
 # Wireless configuration
 # Industrial environment - different channels
-RADIO_OVERRIDE_radio0_channel="1"        # 2.4GHz
-RADIO_OVERRIDE_radio1_channel="44"       # 5GHz
+RADIO_OVERRIDE_2g_channel="1"        # 2.4GHz
+RADIO_OVERRIDE_5g_channel="44"       # 5GHz
 
 # Medium power for garage coverage
-RADIO_OVERRIDE_radio0_txpower="18"
-RADIO_OVERRIDE_radio1_txpower="20"
+RADIO_OVERRIDE_2g_txpower="18"
+RADIO_OVERRIDE_5g_txpower="20"
 
 # Only main network and IoT in garage
 SSID_OVERRIDE_vlan30_guest_disabled="1"
@@ -279,10 +279,10 @@ VLAN_OVERRIDE_40_disabled="1"  # No separate IoT VLAN
 
 # Wireless configuration
 # Basement-specific settings
-RADIO_OVERRIDE_radio0_channel="3"
-RADIO_OVERRIDE_radio1_channel="157"
-RADIO_OVERRIDE_radio0_txpower="20"  # High power for concrete walls
-RADIO_OVERRIDE_radio1_txpower="23"
+RADIO_OVERRIDE_2g_channel="3"
+RADIO_OVERRIDE_5g_channel="157"
+RADIO_OVERRIDE_2g_txpower="20"  # High power for concrete walls
+RADIO_OVERRIDE_5g_txpower="23"
 
 # Only main network needed in basement
 SSID_OVERRIDE_vlan30_guest_disabled="1"
@@ -354,8 +354,8 @@ You want to change power settings for all Archer routers:
 # Edit wireless-configs/common-overrides.conf
 case "$HARDWARE_MODEL" in
     *"Archer"*)
-        RADIO_OVERRIDE_radio0_txpower="12"  # Reduced further
-        RADIO_OVERRIDE_radio1_txpower="15"
+        RADIO_OVERRIDE_2g_txpower="12"  # Reduced further
+        RADIO_OVERRIDE_5g_txpower="15"
         ;;
 esac
 ```
@@ -394,9 +394,9 @@ VLAN_OVERRIDE_10_netmask="255.255.255.0"
 
 # Wireless configuration
 # Office-optimized settings
-RADIO_OVERRIDE_radio0_channel="6"
-RADIO_OVERRIDE_radio1_channel="48"  # DFS channel for less congestion
-RADIO_OVERRIDE_radio1_htmode="VHT80"  # Max performance on 5GHz
+RADIO_OVERRIDE_2g_channel="6"
+RADIO_OVERRIDE_5g_channel="48"  # DFS channel for less congestion
+RADIO_OVERRIDE_5g_htmode="VHT80"  # Max performance on 5GHz
 
 # Disable guest network in office for security
 SSID_OVERRIDE_vlan30_guest_disabled="1"

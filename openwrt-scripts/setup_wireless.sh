@@ -113,7 +113,6 @@ fi
 # Function to apply SSID overrides
 apply_ssid_overrides() {
   local network="$1"
-
   # Apply SSID-specific overrides using variable indirection
   eval "override_disabled=\$SSID_OVERRIDE_${network}_disabled"
   eval "override_bands=\$SSID_OVERRIDE_${network}_bands"
@@ -140,13 +139,37 @@ apply_ssid_overrides() {
 
 # Function to apply radio overrides
 apply_radio_overrides() {
+  local detect_script="$(dirname "$0")/detect_bands.sh"
   local radio="$1"
 
+  # Check if detection script exists
+  if [ ! -x "$detect_script" ]; then
+    log_verbose "Band detection script not available, skipping band-specific overrides for $radio"
+    return
+  fi
+
+  # Get band assignment for this radio
+  local band_assignment=$("$detect_script" -q assign 2>/dev/null | grep "$radio")
+
+  if [ -z "$band_assignment" ]; then
+    log_verbose "Could not determine band for radio $radio, skipping band-specific overrides"
+    return
+  fi
+
+  local band=$(echo "$band_assignment" | cut -d: -f2)
+
+  if [ -z "$band" ]; then
+    log_verbose "Invalid band assignment format for radio $radio: $band_assignment"
+    return
+  fi
+
+  log_verbose "Applying band-specific overrides for $radio (band: $band)"
+
   # Apply radio-specific overrides using variable indirection
-  eval "override_channel=\$RADIO_OVERRIDE_${radio}_channel"
-  eval "override_txpower=\$RADIO_OVERRIDE_${radio}_txpower"
-  eval "override_htmode=\$RADIO_OVERRIDE_${radio}_htmode"
-  eval "override_country=\$RADIO_OVERRIDE_${radio}_country"
+  eval "override_channel=\$RADIO_OVERRIDE_${band}_channel"
+  eval "override_txpower=\$RADIO_OVERRIDE_${band}_txpower"
+  eval "override_htmode=\$RADIO_OVERRIDE_${band}_htmode"
+  eval "override_country=\$RADIO_OVERRIDE_${band}_country"
 
   # Apply overrides if they exist
   [ -n "$override_channel" ] && run_uci set wireless.$radio.channel="$override_channel"
@@ -154,6 +177,47 @@ apply_radio_overrides() {
   [ -n "$override_htmode" ] && run_uci set wireless.$radio.htmode="$override_htmode"
   [ -n "$override_country" ] && run_uci set wireless.$radio.country="$override_country"
 }
+
+# Function to assign radio bands using external detection script
+assign_radio_bands() {
+  local detect_script="$(dirname "$0")/detect_bands.sh"
+
+  if [ ! -x "$detect_script" ]; then
+    log_warning "Band detection script not found or not executable: $detect_script"
+    return 1
+  fi
+
+  log_info "Assigning optimal radio bands..."
+
+  # Get band assignments from detection script
+  local assignments
+  if [ "$VERBOSE" = "true" ]; then
+    assignments=$("$detect_script" assign 2>&1)
+    local exit_code=$?
+  else
+    assignments=$("$detect_script" -q assign 2>/dev/null)
+    local exit_code=$?
+  fi
+
+  if [ $exit_code -ne 0 ]; then
+    log_warning "Band detection failed, skipping automatic assignment"
+    return 1
+  fi
+
+  # Apply assignments
+  echo "$assignments" | while IFS=: read -r radio band; do
+    if [ -n "$radio" ] && [ -n "$band" ]; then
+      log_verbose "Assigning radio $radio to $band band"
+      run_uci set wireless.$radio.band="$band"
+    fi
+  done
+
+  log_info "Band assignment complete."
+  return 0
+}
+
+# Assign radio bands intelligently based on hardware capabilities
+assign_radio_bands
 
 log_info "Cleaning up existing wireless interfaces..."
 for iface in $(uci show wireless | grep "=wifi-iface" | cut -d. -f2 | cut -d= -f1); do
@@ -185,7 +249,7 @@ for FILE in "$CONFIG_DIR"/ssid*.conf; do
 
   for RADIO in $RADIOS; do
     BAND=$(uci get wireless.$RADIO.band 2>/dev/null)
-
+    echo $SSID_BANDS $BAND
     # Skip this radio if it's not in the specified bands
     if ! echo "$SSID_BANDS" | grep -q "$BAND"; then
       log_warning "Skipping SSID '$SSID_NAME' on $BAND ($RADIO) - not in specified bands: $SSID_BANDS"
